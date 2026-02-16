@@ -1,0 +1,78 @@
+<section class="container">
+  <div class="card">
+    <h1>Track application</h1>
+    <p class="muted">Enter your token to view status and download your standardized CV when ready.</p>
+
+    @if (error()) {
+      <div class="alert alert--error">{{ error() }}</div>
+    }
+
+    <form class="form" [formGroup]="form" (ngSubmit)="refresh(true)">
+      <label class="field">
+        <span class="field__label">Token</span>
+        <input class="input" formControlName="token" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+        @if (form.controls.token.touched && form.controls.token.invalid) {
+          <div class="field__hint field__hint--error">Token is required.</div>
+        }
+      </label>
+
+      <div class="actions">
+        <button class="btn btn--primary" type="submit" [disabled]="loading()">
+          @if (loading()) { Loading… } @else { Refresh }
+        </button>
+        <button
+          class="btn btn--ghost"
+          type="button"
+          (click)="downloadPdf()"
+          [disabled]="!status()?.standardizedCvReady"
+        >
+          Download standardized CV (PDF)
+        </button>
+        <button class="btn btn--danger" type="button" (click)="deleteApplication()" [disabled]="loading()">
+          Delete application
+        </button>
+      </div>
+    </form>
+
+    @if (polling()) {
+      <div class="hint" style="margin-top: 10px">
+        Auto-refreshing… ({{ pollSeconds() }}s)
+        <button class="btn btn--ghost btn--sm" type="button" (click)="stopPolling()">Stop</button>
+      </div>
+    }
+
+    @if (status()) {
+      <div class="card" style="margin-top: 16px">
+        <div class="kv">
+          <div class="kv__row">
+            <div class="kv__k">Job</div>
+            <div class="kv__v">{{ status()?.jobTitle || '—' }}</div>
+          </div>
+          <div class="kv__row">
+            <div class="kv__k">Status</div>
+            <div class="kv__v"><span class="badge">{{ status()?.status || '—' }}</span></div>
+          </div>
+          <div class="kv__row">
+            <div class="kv__k">Score</div>
+            <div class="kv__v">{{ status()?.score ?? '—' }}</div>
+          </div>
+          <div class="kv__row">
+            <div class="kv__k">Updated</div>
+            <div class="kv__v">{{ formatDateTime(status()?.updatedAt) }}</div>
+          </div>
+        </div>
+
+        @if ((status()?.missing?.length || 0) > 0) {
+          <div style="margin-top: 12px">
+            <div class="muted" style="margin-bottom: 6px">Missing fields</div>
+            <ul class="list">
+              @for (m of status()?.missing || []; track m) {
+                <li>{{ m }}</li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</section>

@@ -1,0 +1,130 @@
+<section class="container">
+  <div class="card">
+    <h1>Apply</h1>
+    <p class="muted">Choose a role, then submit your CV.</p>
+
+    @if (loading()) {
+      <div class="skeleton" style="height: 16px; width: 260px"></div>
+      <div class="skeleton" style="height: 40px; width: 100%; margin-top: 12px"></div>
+      <div class="skeleton" style="height: 40px; width: 100%; margin-top: 12px"></div>
+    } @else {
+      @if (error()) {
+        <div class="alert alert--error">{{ error() }}</div>
+      }
+
+      @if (jobs().length === 0) {
+        <div class="alert">No open job postings yet. Please check back later.</div>
+      } @else if (!selectedJob()) {
+        <div class="job-grid" style="margin-top: 14px">
+          @for (job of jobs(); track job.id) {
+            <div class="card job-card">
+              <div class="header-row">
+                <div class="truncate">
+                  <div class="strong" style="font-size: 18px">{{ job.title || ('Job #' + job.id) }}</div>
+                  <div class="muted small truncate">Open role</div>
+                </div>
+                <div class="actions actions--right">
+                  <button class="btn btn--primary" type="button" (click)="chooseJob(job)">Apply</button>
+                </div>
+              </div>
+
+              @if (job.description) {
+                <div class="job-desc" style="margin-top: 10px">
+                  <div class="job-desc__label">Description</div>
+                  <div class="job-desc__text">{{ job.description }}</div>
+                </div>
+              }
+
+              @if ((job.requirements?.skillsRequired?.length ?? 0) > 0 || (job.requirements?.skillsNiceToHave?.length ?? 0) > 0) {
+                <div class="job-card__skills" style="margin-top: 12px">
+                  @for (s of (job.requirements?.skillsRequired || []); track s) {
+                    <span class="skill-dot" title="Required">{{ s }}</span>
+                  }
+                  @for (s of (job.requirements?.skillsNiceToHave || []); track s) {
+                    <span class="skill-dot skill-dot--soft" title="Nice to have">{{ s }}</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="card" style="margin-top: 14px">
+          <div class="header-row">
+            <div class="truncate">
+              <div class="strong" style="font-size: 18px">{{ selectedJob()?.title || ('Job #' + selectedJob()?.id) }}</div>
+              <div class="muted small truncate">{{ selectedJob()?.description || '' }}</div>
+            </div>
+            <div class="actions actions--right">
+              <button class="btn btn--ghost" type="button" (click)="backToJobs()">Change job</button>
+            </div>
+          </div>
+
+          @if (
+            (selectedJob()?.requirements?.skillsRequired?.length ?? 0) > 0 ||
+            (selectedJob()?.requirements?.skillsNiceToHave?.length ?? 0) > 0
+          ) {
+            <div class="job-card__skills" style="margin-top: 12px">
+              @for (s of (selectedJob()?.requirements?.skillsRequired || []); track s) {
+                <span class="skill-dot" title="Required">{{ s }}</span>
+              }
+              @for (s of (selectedJob()?.requirements?.skillsNiceToHave || []); track s) {
+                <span class="skill-dot skill-dot--soft" title="Nice to have">{{ s }}</span>
+              }
+            </div>
+          }
+
+          <form [formGroup]="form" (ngSubmit)="submit()" class="form">
+            <div class="grid2">
+              <label class="field">
+                <span class="field__label">Full name (optional)</span>
+                <input class="input" formControlName="fullName" placeholder="Jane Doe" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Email (optional)</span>
+                <input class="input" formControlName="email" placeholder="jane@example.com" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span class="field__label">Resume (PDF/DOCX/TXT)</span>
+              <input
+                class="input"
+                type="file"
+                (change)="onFileChange($event)"
+                accept=".pdf,.docx,.txt,application/pdf"
+              />
+              @if (form.controls.resume.touched && form.controls.resume.invalid) {
+                <div class="field__hint field__hint--error">Resume file is required.</div>
+              }
+            </label>
+
+            <label class="check">
+              <input type="checkbox" formControlName="consent" />
+              <span>I consent to processing my resume for evaluation.</span>
+            </label>
+
+            <div class="actions">
+              <button class="btn btn--primary" type="submit" [disabled]="submitting()">
+                @if (submitting()) { Submitting... } @else { Submit application }
+              </button>
+              <a class="btn btn--ghost" routerLink="/track">I already have a token</a>
+            </div>
+          </form>
+        </div>
+      }
+
+      @if (submitResult()) {
+        <div class="card card--success" style="margin-top: 16px">
+          <h2>Submitted</h2>
+          <p class="muted">Save this token to track your application:</p>
+          <div class="token">{{ submitResult()?.token }}</div>
+          <div class="actions">
+            <button class="btn btn--primary" type="button" (click)="goTrack()">Track now</button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</section>

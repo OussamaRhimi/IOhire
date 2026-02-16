@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "job_postings",
+  "info": {
+    "singularName": "job-posting",
+    "pluralName": "job-postings",
+    "displayName": "Job Posting",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    },
+    "requirements": {
+      "type": "json"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["draft", "open", "closed"],
+      "default": "draft",
+      "required": true
+    },
+    "candidates": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::candidate.candidate",
+      "mappedBy": "jobPosting"
+    }
+  }
+}

@@ -1,0 +1,209 @@
+<section class="container container--wide">
+  <div class="card">
+    <div class="header-row">
+      <div>
+        <h1>Candidate</h1>
+        <p class="muted">Review skills match, experience, rerun AI, and preview exports.</p>
+      </div>
+      <div class="actions">
+        <button class="btn btn--ghost" type="button" (click)="back()">Back</button>
+        <button class="btn btn--ghost" type="button" (click)="refresh()" [disabled]="loading()">Refresh</button>
+        <button class="btn btn--ghost" type="button" (click)="logout()">Logout</button>
+      </div>
+    </div>
+
+    @if (error()) {
+      <div class="alert alert--error">{{ error() }}</div>
+    }
+
+    @if (loading()) {
+      <div class="skeleton" style="height: 42px; width: 100%"></div>
+      <div class="skeleton" style="height: 42px; width: 100%; margin-top: 10px"></div>
+    } @else if (!candidate()) {
+      <div class="alert">Candidate not found.</div>
+    } @else {
+      <div class="card" style="margin-top: 12px">
+        <div class="header-row">
+          <div class="truncate">
+            <div class="strong" style="font-size: 18px">{{ candidate()?.fullName || candidate()?.email || ('#' + candidate()?.id) }}</div>
+            <div class="muted small truncate">{{ candidate()?.email || '' }}</div>
+            <div class="muted small">Job: {{ candidate()?.jobPosting?.title || 'â€”' }}</div>
+          </div>
+          <div class="actions actions--right">
+            @if (templates().length > 0) {
+              <label class="muted small" style="display: flex; align-items: center; gap: 8px">
+                Template
+                <select
+                  class="input"
+                  style="height: 34px; padding: 6px 10px"
+                  [value]="selectedTemplateKey()"
+                  (change)="applyTemplateKey(($any($event.target).value))"
+                  [disabled]="saving()"
+                >
+                  @for (t of templates(); track t.key) {
+                    <option [value]="t.key">{{ t.name }}</option>
+                  }
+                </select>
+              </label>
+            }
+            <button class="btn btn--ghost" type="button" (click)="openResume()">Resume</button>
+            <button class="btn btn--ghost" type="button" (click)="openStandardizedPdf()">Std CV</button>
+            <button class="btn btn--ghost" type="button" (click)="reprocess()" [disabled]="!canReprocess()">Re-run AI</button>
+          </div>
+        </div>
+
+        <div class="grid2" style="margin-top: 12px">
+          <div class="muted small">Status: <span class="badge">{{ candidate()?.status || 'â€”' }}</span></div>
+          <div class="muted small">Score: {{ candidate()?.score ?? 'â€”' }}</div>
+          <div class="muted small">Created: {{ formatDateTime(candidate()?.createdAt) }}</div>
+          <div class="muted small">Updated: {{ formatDateTime(candidate()?.updatedAt) }}</div>
+        </div>
+
+        @if (missing().length > 0) {
+          <div class="alert" style="margin-top: 12px">Missing: {{ missing().join(', ') }}</div>
+        }
+
+        <div class="actions" style="margin-top: 12px">
+          <button class="btn btn--ghost" type="button" (click)="tab.set('overview')" [disabled]="tab() === 'overview'">
+            Overview
+          </button>
+          <button class="btn btn--ghost" type="button" (click)="tab.set('skills')" [disabled]="tab() === 'skills'">
+            Skills match
+          </button>
+          <button class="btn btn--ghost" type="button" (click)="tab.set('experience')" [disabled]="tab() === 'experience'">
+            Experience
+          </button>
+          <button class="btn btn--ghost" type="button" (click)="tab.set('pdf')" [disabled]="tab() === 'pdf'">
+            PDF preview
+          </button>
+        </div>
+
+        <div style="margin-top: 12px">
+          @if (tab() === 'overview') {
+            <div class="grid2">
+              <div class="card">
+                <div class="strong">Job requirements</div>
+                <div class="muted small" style="margin-top: 8px">
+                  Min years: {{ minYearsText() }}
+                </div>
+                <div class="muted small" style="margin-top: 8px">
+                  Required skills: {{ requiredSkillsText() }}
+                </div>
+                <div class="muted small" style="margin-top: 8px">
+                  Nice-to-have: {{ niceToHaveSkillsText() }}
+                </div>
+                @if (candidate()?.jobPosting?.requirements?.notes) {
+                  <div class="muted small" style="margin-top: 8px">Notes: {{ candidate()?.jobPosting?.requirements?.notes }}</div>
+                }
+              </div>
+              <div class="card">
+                <div class="strong">HR notes</div>
+                <div class="muted small" style="margin-top: 8px; white-space: pre-wrap">
+                  {{ candidate()?.hrNotes || 'â€”' }}
+                </div>
+              </div>
+            </div>
+          } @else if (tab() === 'skills') {
+            <div class="grid2">
+              <div class="card">
+                <div class="strong">Required skills</div>
+                <div class="muted small" style="margin-top: 8px">
+                  Matched {{ skillMatch().requiredMatched }} / {{ skillMatch().requiredTotal }}
+                </div>
+                @if (skillMatch().requiredTotal === 0) {
+                  <div class="muted small" style="margin-top: 10px">No required skills configured on the job posting.</div>
+                } @else {
+                  <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px">
+                    @for (s of skillMatch().required; track s.skill) {
+                      <span
+                        class="badge"
+                        [style.background]="s.matched ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)'"
+                        [style.border]="s.matched ? '1px solid rgba(34,197,94,0.35)' : '1px solid rgba(239,68,68,0.35)'"
+                      >
+                        {{ s.skill }}
+                      </span>
+                    }
+                  </div>
+                }
+              </div>
+
+              <div class="card">
+                <div class="strong">Nice-to-have skills</div>
+                <div class="muted small" style="margin-top: 8px">
+                  Matched {{ skillMatch().niceMatched }} / {{ skillMatch().niceTotal }}
+                </div>
+                @if (skillMatch().niceTotal === 0) {
+                  <div class="muted small" style="margin-top: 10px">No nice-to-have skills configured on the job posting.</div>
+                } @else {
+                  <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px">
+                    @for (s of skillMatch().nice; track s.skill) {
+                      <span
+                        class="badge"
+                        [style.background]="s.matched ? 'rgba(34,197,94,0.18)' : 'rgba(148,163,184,0.18)'"
+                        [style.border]="s.matched ? '1px solid rgba(34,197,94,0.35)' : '1px solid rgba(148,163,184,0.28)'"
+                      >
+                        {{ s.skill }}
+                      </span>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="card" style="margin-top: 12px">
+              <div class="strong">Extracted skills</div>
+              @if (extractedSkills().length === 0) {
+                <div class="alert" style="margin-top: 10px">No extracted skills yet. Click â€œRe-run AIâ€.</div>
+              } @else {
+                <div class="muted small" style="margin-top: 8px">Skills detected from the CV text.</div>
+                <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px">
+                  @for (s of extractedSkills(); track s) {
+                    <span
+                      class="badge"
+                      style="border: 1px solid rgba(148, 163, 184, 0.28); background: rgba(148, 163, 184, 0.14)"
+                    >
+                      {{ s }}
+                    </span>
+                  }
+                </div>
+              }
+            </div>
+          } @else if (tab() === 'experience') {
+            <div class="card">
+              <div class="strong">Experience duration</div>
+              <div class="muted small" style="margin-top: 8px">
+                Total (sum of roles with dates): {{ experienceTimeline().totalLabel }}
+              </div>
+
+              @if (experienceTimeline().roles.length === 0) {
+                <div class="alert" style="margin-top: 10px">No experience entries yet. Click â€œRe-run AIâ€.</div>
+              } @else {
+                <div style="margin-top: 12px; display: grid; gap: 10px">
+                  @for (r of experienceTimeline().roles; track (r.title + '-' + r.company + '-' + r.startRaw + '-' + r.endRaw)) {
+                    <div class="card" style="background: rgba(255, 255, 255, 0.03)">
+                      <div class="strong">{{ r.title || 'Role' }} @if (r.company) { <span class="muted">â€” {{ r.company }}</span> }</div>
+                      <div class="muted small" style="margin-top: 6px">
+                        {{ r.startRaw || 'â€”' }} â†’ {{ r.endRaw || 'â€”' }}
+                        @if (r.duration) { <span class="badge" style="margin-left: 8px">{{ r.duration }}</span> }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          } @else if (tab() === 'pdf') {
+            @if (!standardizedPdfUrl()) {
+              <div class="alert">No PDF available yet. Click â€œRe-run AIâ€.</div>
+            } @else {
+              <iframe
+                [src]="standardizedPdfUrl()!"
+                title="Standardized CV PDF"
+                style="width: 100%; height: 78vh; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px"
+              ></iframe>
+            }
+          }
+        </div>
+      </div>
+    }
+  </div>
+</section>

@@ -1,0 +1,110 @@
+<section class="container container--wide">
+  <div class="header-row">
+    <div>
+      <h1>Analytics</h1>
+      <p class="muted">Clear metrics and trends for hiring pipeline health.</p>
+    </div>
+    <div class="actions">
+      <button class="btn btn--ghost" type="button" (click)="refresh()" [disabled]="loading()">Refresh</button>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert--error">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <div class="skeleton" style="height: 42px; width: 100%; margin-top: 12px"></div>
+    <div class="skeleton" style="height: 240px; width: 100%; margin-top: 12px"></div>
+  } @else {
+    <div class="grid2" style="margin-top: 12px">
+      <div class="card">
+        <div class="header-row">
+          <div>
+            <div class="strong">KPIs</div>
+            <div class="muted small">Last refreshed: {{ formatDateTime(lastRefreshedAt()) }}</div>
+          </div>
+        </div>
+        <div class="kpi-grid" style="margin-top: 12px">
+          <div class="kpi">
+            <div class="kpi__label">Open jobs</div>
+            <div class="kpi__value">{{ kpi().openJobs }}</div>
+            <div class="kpi__hint muted small">of {{ kpi().totalJobs }} total</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__label">Candidates</div>
+            <div class="kpi__value">{{ kpi().totalCandidates }}</div>
+            <div class="kpi__hint muted small">in pipeline</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__label">Processed</div>
+            <div class="kpi__value">{{ kpi().processed }}</div>
+            <div class="kpi__hint muted small">Processing: {{ kpi().processing }} · Errors: {{ kpi().error }}</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__label">Avg score</div>
+            <div class="kpi__value">{{ kpi().avgScore ?? '—' }}</div>
+            <div class="kpi__hint muted small">out of 100</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi__label">Avg processing</div>
+            <div class="kpi__value">{{ kpi().avgProcessingMinutes ?? '—' }}</div>
+            <div class="kpi__hint muted small">minutes (approx.)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="strong">Candidates submitted (last 14 days)</div>
+        <div class="muted small">Trend line</div>
+        <div style="height: 260px; margin-top: 10px">
+          <canvas #chartCandidatesByDay></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top: 12px">
+      <div class="card">
+        <div class="strong">Candidates by status</div>
+        <div class="muted small">Doughnut</div>
+        <div style="height: 260px; margin-top: 10px">
+          <canvas #chartCandidatesByStatus></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="strong">Jobs by status</div>
+        <div class="muted small">Pie</div>
+        <div style="height: 260px; margin-top: 10px">
+          <canvas #chartJobsByStatus></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top: 12px">
+      <div class="card">
+        <div class="strong">Score distribution</div>
+        <div class="muted small">Histogram</div>
+        <div style="height: 260px; margin-top: 10px">
+          <canvas #chartScoreHistogram></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="strong">Candidates per job (top)</div>
+        <div class="muted small">Bar</div>
+        <div style="height: 260px; margin-top: 10px">
+          <canvas #chartCandidatesByJob></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 12px">
+      <div class="strong">Top missing fields</div>
+      <div class="muted small">What candidates most often forget</div>
+      <div style="height: 320px; margin-top: 10px">
+        <canvas #chartMissingFields></canvas>
+      </div>
+    </div>
+  }
+</section>

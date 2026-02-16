@@ -1,0 +1,42 @@
+<div class="app-shell">
+  <app-topbar />
+
+  <main class="page">
+    <section class="container">
+      <div class="card">
+        <h1>HR login</h1>
+        <p class="muted">Sign in to access the HR dashboard.</p>
+
+        @if (error()) {
+          <div class="alert alert--error">{{ error() }}</div>
+        }
+
+        <form class="form" [formGroup]="form" (ngSubmit)="save()">
+          <label class="field">
+            <span class="field__label">Email</span>
+            <input class="input" formControlName="email" type="email" placeholder="hr@company.com" />
+            @if (form.controls.email.touched && form.controls.email.invalid) {
+              <div class="field__hint field__hint--error">Valid email is required.</div>
+            }
+          </label>
+
+          <label class="field">
+            <span class="field__label">Password</span>
+            <input class="input" formControlName="password" type="password" placeholder="••••••••" />
+            @if (form.controls.password.touched && form.controls.password.invalid) {
+              <div class="field__hint field__hint--error">Password is required.</div>
+            }
+          </label>
+
+          <div class="actions">
+            <button class="btn btn--primary" type="submit" [disabled]="saving()">
+              @if (saving()) { Savingâ€¦ } @else { Continue }
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <app-footer />
+</div>

@@ -1,0 +1,111 @@
+<section class="container container--wide">
+  <div class="card">
+    <div class="header-row">
+      <div>
+        <h1>Candidates</h1>
+        <p class="muted">Review, update statuses, and download resumes.</p>
+      </div>
+      <div class="actions">
+        <a class="btn btn--ghost" routerLink="/admin/hr/jobs">Job postings</a>
+        <button class="btn btn--ghost" type="button" (click)="refresh()" [disabled]="loading()">Refresh</button>
+        <button class="btn btn--ghost" type="button" (click)="logout()">Logout</button>
+      </div>
+    </div>
+
+    @if (error()) {
+      <div class="alert alert--error">{{ error() }}</div>
+    }
+
+    <form class="form form--compact" [formGroup]="filterForm">
+      <div class="grid2">
+        <label class="field">
+          <span class="field__label">Search</span>
+          <input class="input" formControlName="q" placeholder="Name, email, job…" />
+        </label>
+        <label class="field">
+          <span class="field__label">Status</span>
+          <select class="input" formControlName="status" [disabled]="statuses().length === 0">
+            <option value="">All</option>
+            @for (s of statuses(); track s) {
+              <option [value]="s">{{ s }}</option>
+            }
+          </select>
+        </label>
+      </div>
+    </form>
+
+    <div style="margin-top: 14px">
+      @if (loading()) {
+        <div class="skeleton" style="height: 42px; width: 100%"></div>
+        <div class="skeleton" style="height: 42px; width: 100%; margin-top: 10px"></div>
+      } @else if (filtered().length === 0) {
+        <div class="alert">No candidates match the current filter.</div>
+      } @else {
+        <div class="table table--candidates">
+          <div class="table__head">
+            <div>Candidate</div>
+            <div>Job</div>
+            <div>Status</div>
+            <div>Score</div>
+            <div>Created</div>
+            <div></div>
+          </div>
+          @for (c of filtered(); track (c.documentId || c.id)) {
+            <div class="table__row">
+              <div class="truncate">
+                <div class="strong">{{ c.fullName || '—' }}</div>
+                <div class="muted small truncate">{{ c.email || '' }}</div>
+                @if (c.missing.length > 0) {
+                  <div class="muted small">Missing: {{ c.missing.join(', ') }}</div>
+                }
+              </div>
+              <div class="truncate">{{ c.jobTitle || '—' }}</div>
+              <div>
+                <select
+                  class="input input--sm"
+                  [value]="c.status || ''"
+                  (change)="saveStatus(c, $any($event.target).value)"
+                  [disabled]="saving() || statuses().length === 0"
+                >
+                  <option value="">—</option>
+                  @for (s of statuses(); track s) {
+                    <option [value]="s">{{ s }}</option>
+                  }
+                </select>
+              </div>
+              <div>{{ c.score ?? '—' }}</div>
+              <div class="muted small">{{ formatDateTime(c.createdAt) }}</div>
+              <div class="actions actions--right">
+                <button class="btn btn--ghost btn--sm" type="button" (click)="view(c)">View</button>
+                <button class="btn btn--ghost btn--sm" type="button" (click)="openResume(c)">Resume</button>
+                <button class="btn btn--ghost btn--sm" type="button" (click)="openStandardizedPdf(c)">Std CV</button>
+                <button
+                  class="btn btn--ghost btn--sm"
+                  type="button"
+                  (click)="reprocess(c)"
+                  [disabled]="saving() || c.status === 'processing'"
+                >
+                  Reprocess
+                </button>
+                <button class="btn btn--danger btn--sm" type="button" (click)="delete(c)" [disabled]="saving()">
+                  Delete
+                </button>
+              </div>
+            </div>
+            <div class="table__row table__row--notes">
+              <div class="notes">
+                <textarea
+                  class="input"
+                  rows="2"
+                  [value]="c.hrNotes || ''"
+                  (blur)="saveNotes(c, $any($event.target).value)"
+                  placeholder="HR notes…"
+                ></textarea>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</section>

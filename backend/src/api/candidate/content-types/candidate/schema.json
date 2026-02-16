@@ -1,0 +1,87 @@
+{
+  "kind": "collectionType",
+  "collectionName": "candidates",
+  "info": {
+    "singularName": "candidate",
+    "pluralName": "candidates",
+    "displayName": "Candidate",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "fullName": {
+      "type": "string",
+      "required": false
+    },
+    "email": {
+      "type": "email",
+      "required": false
+    },
+    "resume": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": ["files"]
+    },
+    "extractedData": {
+      "type": "json"
+    },
+    "score": {
+      "type": "decimal"
+    },
+    "standardizedCvMarkdown": {
+      "type": "text"
+    },
+    "cvTemplateKey": {
+      "type": "enumeration",
+      "enum": [
+        "standard",
+        "experience_first",
+        "skills_first",
+        "compact",
+        "education_first",
+        "project_focus",
+        "sidebar_photo",
+        "teal_circle",
+        "accent_pink",
+        "navy_gold",
+        "sunset"
+      ],
+      "default": "standard",
+      "required": false
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["new", "processing", "processed", "reviewing", "shortlisted", "rejected", "hired", "error"],
+      "default": "new",
+      "required": true
+    },
+    "hrNotes": {
+      "type": "text"
+    },
+    "publicToken": {
+      "type": "string",
+      "unique": true
+    },
+    "consent": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    },
+    "consentAt": {
+      "type": "datetime"
+    },
+    "retentionUntil": {
+      "type": "datetime"
+    },
+    "jobPosting": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::job-posting.job-posting",
+      "inversedBy": "candidates",
+      "required": true
+    }
+  }
+}

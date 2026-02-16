@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: strapi
+      POSTGRES_USER: strapi
+      POSTGRES_PASSWORD: strapi
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - cv-net
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - cv-net
+
+  strapi:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: "llama3.2:3b"
+    ports:
+      - "1337:1337"
+    depends_on:
+      - postgres
+      - ollama
+    volumes:
+      - strapi-uploads:/opt/app/public/uploads
+    networks:
+      - cv-net
+
+volumes:
+  postgres-data:
+  ollama-data:
+  strapi-uploads:
+
+networks:
+  cv-net:
+    driver: bridge
