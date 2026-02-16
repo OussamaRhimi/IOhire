@@ -1,13 +1,22 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { LucideAngularModule, type LucideIconData } from 'lucide-angular';
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  CheckCircle2,
+  FileUp,
+  Search,
+  Sparkles,
+} from 'lucide-angular/src/icons';
 import { toErrorMessage } from '../../../core/http/http-error';
 import { StrapiApi } from '../../../core/strapi/strapi.api';
 import { PublicJobPosting } from '../../../core/strapi/strapi.types';
 
 @Component({
   selector: 'app-apply-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, LucideAngularModule],
   templateUrl: './apply-page.html',
 })
 export class ApplyPage {
@@ -36,6 +45,13 @@ export class ApplyPage {
     if (!id) return null;
     return this.jobs().find((j) => j.id === id) ?? null;
   });
+
+  readonly iconSearch: LucideIconData = Search;
+  readonly iconBriefcase: LucideIconData = BriefcaseBusiness;
+  readonly iconUpload: LucideIconData = FileUp;
+  readonly iconSparkles: LucideIconData = Sparkles;
+  readonly iconArrowRight: LucideIconData = ArrowRight;
+  readonly iconCheck: LucideIconData = CheckCircle2;
 
   async ngOnInit() {
     try {

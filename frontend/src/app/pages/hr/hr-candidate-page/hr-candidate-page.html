@@ -1,209 +1,185 @@
-<section class="container container--wide">
-  <div class="card">
-    <div class="header-row">
+<section class="container container--wide candidate-detail-page">
+  @if (error()) {
+    <div class="alert alert--error">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <div class="skeleton" style="height: 42px; width: 100%"></div>
+    <div class="skeleton" style="height: 42px; width: 100%; margin-top: 10px"></div>
+  } @else if (!candidate()) {
+    <div class="alert">Candidate not found.</div>
+  } @else {
+    <div class="candidate-detail-header">
       <div>
-        <h1>Candidate</h1>
-        <p class="muted">Review skills match, experience, rerun AI, and preview exports.</p>
+        <h1>Parsed CV - {{ candidate()?.fullName || candidate()?.email || ('#' + candidate()?.id) }}</h1>
+        <p class="muted">Automatically extracted and structured data</p>
       </div>
       <div class="actions">
-        <button class="btn btn--ghost" type="button" (click)="back()">Back</button>
-        <button class="btn btn--ghost" type="button" (click)="refresh()" [disabled]="loading()">Refresh</button>
-        <button class="btn btn--ghost" type="button" (click)="logout()">Logout</button>
+        <button class="btn btn--ghost" type="button" (click)="openResume()">View Original</button>
+        <button class="btn btn--primary" type="button" (click)="openStandardizedPdf()">Download Template</button>
       </div>
     </div>
 
-    @if (error()) {
-      <div class="alert alert--error">{{ error() }}</div>
-    }
-
-    @if (loading()) {
-      <div class="skeleton" style="height: 42px; width: 100%"></div>
-      <div class="skeleton" style="height: 42px; width: 100%; margin-top: 10px"></div>
-    } @else if (!candidate()) {
-      <div class="alert">Candidate not found.</div>
-    } @else {
-      <div class="card" style="margin-top: 12px">
-        <div class="header-row">
-          <div class="truncate">
-            <div class="strong" style="font-size: 18px">{{ candidate()?.fullName || candidate()?.email || ('#' + candidate()?.id) }}</div>
-            <div class="muted small truncate">{{ candidate()?.email || '' }}</div>
-            <div class="muted small">Job: {{ candidate()?.jobPosting?.title || 'â€”' }}</div>
+    <div class="candidate-detail-grid">
+      <div class="candidate-detail-main">
+        <section class="card candidate-panel">
+          <div class="candidate-panel__head">
+            <h2>Personal Information</h2>
+            <span class="candidate-check">OK</span>
           </div>
-          <div class="actions actions--right">
-            @if (templates().length > 0) {
-              <label class="muted small" style="display: flex; align-items: center; gap: 8px">
-                Template
-                <select
-                  class="input"
-                  style="height: 34px; padding: 6px 10px"
-                  [value]="selectedTemplateKey()"
-                  (change)="applyTemplateKey(($any($event.target).value))"
-                  [disabled]="saving()"
-                >
-                  @for (t of templates(); track t.key) {
-                    <option [value]="t.key">{{ t.name }}</option>
-                  }
-                </select>
-              </label>
-            }
-            <button class="btn btn--ghost" type="button" (click)="openResume()">Resume</button>
-            <button class="btn btn--ghost" type="button" (click)="openStandardizedPdf()">Std CV</button>
-            <button class="btn btn--ghost" type="button" (click)="reprocess()" [disabled]="!canReprocess()">Re-run AI</button>
-          </div>
-        </div>
-
-        <div class="grid2" style="margin-top: 12px">
-          <div class="muted small">Status: <span class="badge">{{ candidate()?.status || 'â€”' }}</span></div>
-          <div class="muted small">Score: {{ candidate()?.score ?? 'â€”' }}</div>
-          <div class="muted small">Created: {{ formatDateTime(candidate()?.createdAt) }}</div>
-          <div class="muted small">Updated: {{ formatDateTime(candidate()?.updatedAt) }}</div>
-        </div>
-
-        @if (missing().length > 0) {
-          <div class="alert" style="margin-top: 12px">Missing: {{ missing().join(', ') }}</div>
-        }
-
-        <div class="actions" style="margin-top: 12px">
-          <button class="btn btn--ghost" type="button" (click)="tab.set('overview')" [disabled]="tab() === 'overview'">
-            Overview
-          </button>
-          <button class="btn btn--ghost" type="button" (click)="tab.set('skills')" [disabled]="tab() === 'skills'">
-            Skills match
-          </button>
-          <button class="btn btn--ghost" type="button" (click)="tab.set('experience')" [disabled]="tab() === 'experience'">
-            Experience
-          </button>
-          <button class="btn btn--ghost" type="button" (click)="tab.set('pdf')" [disabled]="tab() === 'pdf'">
-            PDF preview
-          </button>
-        </div>
-
-        <div style="margin-top: 12px">
-          @if (tab() === 'overview') {
-            <div class="grid2">
-              <div class="card">
-                <div class="strong">Job requirements</div>
-                <div class="muted small" style="margin-top: 8px">
-                  Min years: {{ minYearsText() }}
-                </div>
-                <div class="muted small" style="margin-top: 8px">
-                  Required skills: {{ requiredSkillsText() }}
-                </div>
-                <div class="muted small" style="margin-top: 8px">
-                  Nice-to-have: {{ niceToHaveSkillsText() }}
-                </div>
-                @if (candidate()?.jobPosting?.requirements?.notes) {
-                  <div class="muted small" style="margin-top: 8px">Notes: {{ candidate()?.jobPosting?.requirements?.notes }}</div>
-                }
-              </div>
-              <div class="card">
-                <div class="strong">HR notes</div>
-                <div class="muted small" style="margin-top: 8px; white-space: pre-wrap">
-                  {{ candidate()?.hrNotes || 'â€”' }}
-                </div>
-              </div>
+          <div class="candidate-contact-grid">
+            <div>
+              <div class="muted small">Full Name</div>
+              <div class="strong">{{ contactInfo().fullName }}</div>
             </div>
-          } @else if (tab() === 'skills') {
-            <div class="grid2">
-              <div class="card">
-                <div class="strong">Required skills</div>
-                <div class="muted small" style="margin-top: 8px">
-                  Matched {{ skillMatch().requiredMatched }} / {{ skillMatch().requiredTotal }}
-                </div>
-                @if (skillMatch().requiredTotal === 0) {
-                  <div class="muted small" style="margin-top: 10px">No required skills configured on the job posting.</div>
-                } @else {
-                  <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px">
-                    @for (s of skillMatch().required; track s.skill) {
-                      <span
-                        class="badge"
-                        [style.background]="s.matched ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)'"
-                        [style.border]="s.matched ? '1px solid rgba(34,197,94,0.35)' : '1px solid rgba(239,68,68,0.35)'"
-                      >
-                        {{ s.skill }}
-                      </span>
+            <div>
+              <div class="muted small">Email</div>
+              <div class="strong">{{ contactInfo().email }}</div>
+            </div>
+            <div>
+              <div class="muted small">Phone</div>
+              <div class="strong">{{ contactInfo().phone }}</div>
+            </div>
+            <div>
+              <div class="muted small">Location</div>
+              <div class="strong">{{ contactInfo().location }}</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card candidate-panel">
+          <div class="candidate-panel__head">
+            <h2>Professional Summary</h2>
+            <span class="candidate-check">OK</span>
+          </div>
+          <p class="candidate-body-text">{{ summaryText() }}</p>
+        </section>
+
+        <section class="card candidate-panel">
+          <div class="candidate-panel__head">
+            <h2>Work Experience</h2>
+            <span class="candidate-check">OK</span>
+          </div>
+          @if (experienceTimeline().roles.length === 0) {
+            <div class="muted">No experience extracted yet.</div>
+          } @else {
+            <div class="candidate-stack">
+              @for (r of experienceTimeline().roles; track (r.title + '-' + r.company + '-' + r.startRaw + '-' + r.endRaw)) {
+                <div class="candidate-item">
+                  <div class="candidate-item__icon">W</div>
+                  <div>
+                    <div class="strong">{{ r.title || 'Role' }}</div>
+                    <div class="muted">{{ r.company || '-' }} | {{ r.startRaw || '-' }} - {{ r.endRaw || '-' }}</div>
+                    @if (r.duration) {
+                      <div class="small muted">Duration: {{ r.duration }}</div>
                     }
                   </div>
-                }
-              </div>
-
-              <div class="card">
-                <div class="strong">Nice-to-have skills</div>
-                <div class="muted small" style="margin-top: 8px">
-                  Matched {{ skillMatch().niceMatched }} / {{ skillMatch().niceTotal }}
-                </div>
-                @if (skillMatch().niceTotal === 0) {
-                  <div class="muted small" style="margin-top: 10px">No nice-to-have skills configured on the job posting.</div>
-                } @else {
-                  <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px">
-                    @for (s of skillMatch().nice; track s.skill) {
-                      <span
-                        class="badge"
-                        [style.background]="s.matched ? 'rgba(34,197,94,0.18)' : 'rgba(148,163,184,0.18)'"
-                        [style.border]="s.matched ? '1px solid rgba(34,197,94,0.35)' : '1px solid rgba(148,163,184,0.28)'"
-                      >
-                        {{ s.skill }}
-                      </span>
-                    }
-                  </div>
-                }
-              </div>
-            </div>
-
-            <div class="card" style="margin-top: 12px">
-              <div class="strong">Extracted skills</div>
-              @if (extractedSkills().length === 0) {
-                <div class="alert" style="margin-top: 10px">No extracted skills yet. Click â€œRe-run AIâ€.</div>
-              } @else {
-                <div class="muted small" style="margin-top: 8px">Skills detected from the CV text.</div>
-                <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px">
-                  @for (s of extractedSkills(); track s) {
-                    <span
-                      class="badge"
-                      style="border: 1px solid rgba(148, 163, 184, 0.28); background: rgba(148, 163, 184, 0.14)"
-                    >
-                      {{ s }}
-                    </span>
-                  }
                 </div>
               }
             </div>
-          } @else if (tab() === 'experience') {
-            <div class="card">
-              <div class="strong">Experience duration</div>
-              <div class="muted small" style="margin-top: 8px">
-                Total (sum of roles with dates): {{ experienceTimeline().totalLabel }}
-              </div>
-
-              @if (experienceTimeline().roles.length === 0) {
-                <div class="alert" style="margin-top: 10px">No experience entries yet. Click â€œRe-run AIâ€.</div>
-              } @else {
-                <div style="margin-top: 12px; display: grid; gap: 10px">
-                  @for (r of experienceTimeline().roles; track (r.title + '-' + r.company + '-' + r.startRaw + '-' + r.endRaw)) {
-                    <div class="card" style="background: rgba(255, 255, 255, 0.03)">
-                      <div class="strong">{{ r.title || 'Role' }} @if (r.company) { <span class="muted">â€” {{ r.company }}</span> }</div>
-                      <div class="muted small" style="margin-top: 6px">
-                        {{ r.startRaw || 'â€”' }} â†’ {{ r.endRaw || 'â€”' }}
-                        @if (r.duration) { <span class="badge" style="margin-left: 8px">{{ r.duration }}</span> }
-                      </div>
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          } @else if (tab() === 'pdf') {
-            @if (!standardizedPdfUrl()) {
-              <div class="alert">No PDF available yet. Click â€œRe-run AIâ€.</div>
-            } @else {
-              <iframe
-                [src]="standardizedPdfUrl()!"
-                title="Standardized CV PDF"
-                style="width: 100%; height: 78vh; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px"
-              ></iframe>
-            }
           }
-        </div>
+        </section>
+
+        <section class="card candidate-panel">
+          <div class="candidate-panel__head">
+            <h2>Education</h2>
+            <span class="candidate-check">OK</span>
+          </div>
+          @if (educationItems().length === 0) {
+            <div class="muted">No education extracted yet.</div>
+          } @else {
+            <div class="candidate-stack">
+              @for (e of educationItems(); track (e.degree + '-' + e.school + '-' + e.period)) {
+                <div class="candidate-item">
+                  <div class="candidate-item__icon candidate-item__icon--blue">E</div>
+                  <div>
+                    <div class="strong">{{ e.degree }}</div>
+                    <div class="muted">{{ e.school }} | {{ e.period }}</div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="card candidate-panel">
+          <div class="candidate-panel__head">
+            <h2>Skills and Competencies</h2>
+            <span class="candidate-check">OK</span>
+          </div>
+          @if (extractedSkills().length === 0) {
+            <div class="muted">No skills extracted yet.</div>
+          } @else {
+            <div class="candidate-skill-wrap">
+              @for (s of extractedSkills(); track s) {
+                <span class="candidate-skill-chip">{{ s }}</span>
+              }
+            </div>
+          }
+        </section>
       </div>
-    }
-  </div>
+
+      <aside class="candidate-detail-side">
+        <section class="card candidate-side-card">
+          <h3>CV Completeness</h3>
+          <div class="candidate-score-circle">{{ candidate()?.score ?? 0 }}%</div>
+          <div class="muted" style="text-align: center">Overall Score</div>
+
+          <div class="candidate-side-group">
+            <div class="strong">Present Information</div>
+            @for (item of presentInfo(); track item.label) {
+              @if (item.present) {
+                <div class="candidate-info-row candidate-info-row--ok">{{ item.label }}</div>
+              }
+            }
+          </div>
+
+          <div class="candidate-side-group">
+            <div class="strong">Missing Information</div>
+            @if (missingInfo().length === 0) {
+              <div class="candidate-info-row candidate-info-row--ok">No missing fields</div>
+            } @else {
+              @for (item of missingInfo(); track item.label) {
+                <div class="candidate-info-row candidate-info-row--warn">{{ item.label }}</div>
+              }
+            }
+          </div>
+        </section>
+
+        <section class="card candidate-side-card">
+          <h3>File Information</h3>
+          <div class="candidate-file-row">
+            <div class="muted">Filename</div>
+            <div class="strong">{{ candidate()?.resume?.name || '-' }}</div>
+          </div>
+          <div class="candidate-file-row">
+            <div class="muted">Size</div>
+            <div class="strong">{{ formatBytes(candidate()?.resume?.size) }}</div>
+          </div>
+          <div class="candidate-file-row">
+            <div class="muted">Uploaded</div>
+            <div class="strong">{{ formatDateTime(candidate()?.createdAt) }}</div>
+          </div>
+        </section>
+
+        <section class="card candidate-side-card">
+          <h3>Actions</h3>
+          @if (templates().length > 0) {
+            <label class="field">
+              <span class="field__label">Template</span>
+              <select class="input" [value]="selectedTemplateKey()" (change)="applyTemplateKey(($any($event.target).value))" [disabled]="saving()">
+                @for (t of templates(); track t.key) {
+                  <option [value]="t.key">{{ t.name }}</option>
+                }
+              </select>
+            </label>
+          }
+          <div class="actions" style="margin-top: 10px">
+            <button class="btn btn--primary" type="button" (click)="reprocess()" [disabled]="!canReprocess()">Re-run AI</button>
+            <button class="btn btn--ghost" type="button" (click)="back()">Back to list</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+  }
 </section>

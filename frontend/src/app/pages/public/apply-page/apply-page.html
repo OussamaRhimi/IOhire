@@ -1,7 +1,10 @@
-<section class="container">
-  <div class="card">
-    <h1>Apply</h1>
-    <p class="muted">Choose a role, then submit your CV.</p>
+<section class="container portal-page">
+  <div class="card portal-hero">
+    <div class="portal-hero__title">
+      <span class="portal-hero__icon"><lucide-icon [img]="iconSparkles" [size]="16" /></span>
+      <h1>Candidate Portal</h1>
+    </div>
+    <p class="muted">Choose a role and submit your CV in a single streamlined flow.</p>
 
     @if (loading()) {
       <div class="skeleton" style="height: 16px; width: 260px"></div>
@@ -17,14 +20,20 @@
       } @else if (!selectedJob()) {
         <div class="job-grid" style="margin-top: 14px">
           @for (job of jobs(); track job.id) {
-            <div class="card job-card">
+            <div class="card job-card portal-card">
               <div class="header-row">
                 <div class="truncate">
-                  <div class="strong" style="font-size: 18px">{{ job.title || ('Job #' + job.id) }}</div>
+                  <div class="strong" style="font-size: 18px">
+                    <span class="portal-inline-icon"><lucide-icon [img]="iconBriefcase" [size]="14" /></span>
+                    {{ job.title || ('Job #' + job.id) }}
+                  </div>
                   <div class="muted small truncate">Open role</div>
                 </div>
                 <div class="actions actions--right">
-                  <button class="btn btn--primary" type="button" (click)="chooseJob(job)">Apply</button>
+                  <button class="btn btn--primary" type="button" (click)="chooseJob(job)">
+                    <lucide-icon [img]="iconArrowRight" [size]="14" />
+                    <span>Apply</span>
+                  </button>
                 </div>
               </div>
 
@@ -49,7 +58,7 @@
           }
         </div>
       } @else {
-        <div class="card" style="margin-top: 14px">
+        <div class="card portal-card" style="margin-top: 14px">
           <div class="header-row">
             <div class="truncate">
               <div class="strong" style="font-size: 18px">{{ selectedJob()?.title || ('Job #' + selectedJob()?.id) }}</div>
@@ -107,21 +116,28 @@
 
             <div class="actions">
               <button class="btn btn--primary" type="submit" [disabled]="submitting()">
+                <lucide-icon [img]="iconUpload" [size]="14" />
                 @if (submitting()) { Submitting... } @else { Submit application }
               </button>
-              <a class="btn btn--ghost" routerLink="/track">I already have a token</a>
+              <a class="btn btn--ghost" routerLink="/track">
+                <lucide-icon [img]="iconSearch" [size]="14" />
+                <span>I already have a token</span>
+              </a>
             </div>
           </form>
         </div>
       }
 
       @if (submitResult()) {
-        <div class="card card--success" style="margin-top: 16px">
+        <div class="card card--success portal-card" style="margin-top: 16px">
           <h2>Submitted</h2>
           <p class="muted">Save this token to track your application:</p>
           <div class="token">{{ submitResult()?.token }}</div>
           <div class="actions">
-            <button class="btn btn--primary" type="button" (click)="goTrack()">Track now</button>
+            <button class="btn btn--primary" type="button" (click)="goTrack()">
+              <lucide-icon [img]="iconCheck" [size]="14" />
+              <span>Track now</span>
+            </button>
           </div>
         </div>
       }

@@ -1,11 +1,14 @@
-<section class="container container--wide">
-  <div class="header-row">
+<section class="container container--wide analytics-page">
+  <div class="analytics-head analytics-fade">
     <div>
       <h1>Analytics</h1>
       <p class="muted">Clear metrics and trends for hiring pipeline health.</p>
     </div>
     <div class="actions">
-      <button class="btn btn--ghost" type="button" (click)="refresh()" [disabled]="loading()">Refresh</button>
+      <button class="btn btn--ghost analytics-refresh-btn" type="button" (click)="refresh()" [disabled]="loading()">
+        <lucide-icon [img]="iconRefresh" [size]="16" />
+        <span>Refresh</span>
+      </button>
     </div>
   </div>
 
@@ -17,36 +20,46 @@
     <div class="skeleton" style="height: 42px; width: 100%; margin-top: 12px"></div>
     <div class="skeleton" style="height: 240px; width: 100%; margin-top: 12px"></div>
   } @else {
-    <div class="grid2" style="margin-top: 12px">
-      <div class="card">
+    <div class="analytics-grid analytics-grid--lead">
+      <div class="card analytics-kpi-wrap" appRevealOnScroll>
         <div class="header-row">
           <div>
             <div class="strong">KPIs</div>
             <div class="muted small">Last refreshed: {{ formatDateTime(lastRefreshedAt()) }}</div>
           </div>
         </div>
-        <div class="kpi-grid" style="margin-top: 12px">
-          <div class="kpi">
+
+        <div class="analytics-kpi-grid">
+          <div class="analytics-kpi">
+            <div class="analytics-kpi__icon"><lucide-icon [img]="iconJobs" [size]="16" /></div>
             <div class="kpi__label">Open jobs</div>
             <div class="kpi__value">{{ kpi().openJobs }}</div>
             <div class="kpi__hint muted small">of {{ kpi().totalJobs }} total</div>
           </div>
-          <div class="kpi">
+
+          <div class="analytics-kpi">
+            <div class="analytics-kpi__icon"><lucide-icon [img]="iconCandidates" [size]="16" /></div>
             <div class="kpi__label">Candidates</div>
             <div class="kpi__value">{{ kpi().totalCandidates }}</div>
             <div class="kpi__hint muted small">in pipeline</div>
           </div>
-          <div class="kpi">
+
+          <div class="analytics-kpi">
+            <div class="analytics-kpi__icon"><lucide-icon [img]="iconActivity" [size]="16" /></div>
             <div class="kpi__label">Processed</div>
             <div class="kpi__value">{{ kpi().processed }}</div>
             <div class="kpi__hint muted small">Processing: {{ kpi().processing }} · Errors: {{ kpi().error }}</div>
           </div>
-          <div class="kpi">
+
+          <div class="analytics-kpi">
+            <div class="analytics-kpi__icon"><lucide-icon [img]="iconTarget" [size]="16" /></div>
             <div class="kpi__label">Avg score</div>
             <div class="kpi__value">{{ kpi().avgScore ?? '—' }}</div>
             <div class="kpi__hint muted small">out of 100</div>
           </div>
-          <div class="kpi">
+
+          <div class="analytics-kpi">
+            <div class="analytics-kpi__icon"><lucide-icon [img]="iconClock" [size]="16" /></div>
             <div class="kpi__label">Avg processing</div>
             <div class="kpi__value">{{ kpi().avgProcessingMinutes ?? '—' }}</div>
             <div class="kpi__hint muted small">minutes (approx.)</div>
@@ -54,55 +67,80 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="strong">Candidates submitted (last 14 days)</div>
-        <div class="muted small">Trend line</div>
-        <div style="height: 260px; margin-top: 10px">
+      <div class="card analytics-chart-card" appRevealOnScroll [revealDelay]="80">
+        <div class="analytics-card-head">
+          <div>
+            <div class="strong">Candidates submitted (last 14 days)</div>
+            <div class="muted small">Trend line</div>
+          </div>
+          <span class="analytics-card-icon"><lucide-icon [img]="iconChart" [size]="16" /></span>
+        </div>
+        <div class="analytics-chart-h">
           <canvas #chartCandidatesByDay></canvas>
         </div>
       </div>
     </div>
 
-    <div class="grid2" style="margin-top: 12px">
-      <div class="card">
-        <div class="strong">Candidates by status</div>
-        <div class="muted small">Doughnut</div>
-        <div style="height: 260px; margin-top: 10px">
+    <div class="analytics-grid">
+      <div class="card analytics-chart-card" appRevealOnScroll>
+        <div class="analytics-card-head">
+          <div>
+            <div class="strong">Candidates by status</div>
+            <div class="muted small">Doughnut</div>
+          </div>
+        </div>
+        <div class="analytics-chart-h">
           <canvas #chartCandidatesByStatus></canvas>
         </div>
       </div>
 
-      <div class="card">
-        <div class="strong">Jobs by status</div>
-        <div class="muted small">Pie</div>
-        <div style="height: 260px; margin-top: 10px">
+      <div class="card analytics-chart-card" appRevealOnScroll [revealDelay]="90">
+        <div class="analytics-card-head">
+          <div>
+            <div class="strong">Jobs by status</div>
+            <div class="muted small">Pie</div>
+          </div>
+        </div>
+        <div class="analytics-chart-h">
           <canvas #chartJobsByStatus></canvas>
         </div>
       </div>
     </div>
 
-    <div class="grid2" style="margin-top: 12px">
-      <div class="card">
-        <div class="strong">Score distribution</div>
-        <div class="muted small">Histogram</div>
-        <div style="height: 260px; margin-top: 10px">
+    <div class="analytics-grid">
+      <div class="card analytics-chart-card" appRevealOnScroll>
+        <div class="analytics-card-head">
+          <div>
+            <div class="strong">Score distribution</div>
+            <div class="muted small">Histogram</div>
+          </div>
+        </div>
+        <div class="analytics-chart-h">
           <canvas #chartScoreHistogram></canvas>
         </div>
       </div>
 
-      <div class="card">
-        <div class="strong">Candidates per job (top)</div>
-        <div class="muted small">Bar</div>
-        <div style="height: 260px; margin-top: 10px">
+      <div class="card analytics-chart-card" appRevealOnScroll [revealDelay]="90">
+        <div class="analytics-card-head">
+          <div>
+            <div class="strong">Candidates per job (top)</div>
+            <div class="muted small">Bar</div>
+          </div>
+        </div>
+        <div class="analytics-chart-h">
           <canvas #chartCandidatesByJob></canvas>
         </div>
       </div>
     </div>
 
-    <div class="card" style="margin-top: 12px">
-      <div class="strong">Top missing fields</div>
-      <div class="muted small">What candidates most often forget</div>
-      <div style="height: 320px; margin-top: 10px">
+    <div class="card analytics-chart-card" appRevealOnScroll>
+      <div class="analytics-card-head">
+        <div>
+          <div class="strong">Top missing fields</div>
+          <div class="muted small">What candidates most often forget</div>
+        </div>
+      </div>
+      <div class="analytics-chart-h analytics-chart-h--tall">
         <canvas #chartMissingFields></canvas>
       </div>
     </div>

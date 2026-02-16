@@ -1,25 +1,30 @@
 <header class="topbar" [class.topbar--scrolled]="isScrolled()">
   <div class="topbar__inner">
-    <a class="brand" routerLink="/apply" aria-label="ioHire home">
+    <a class="brand" routerLink="/home" aria-label="ioHire home">
       <img class="brand__logo" src="/iohire-logo.png" width="34" height="34" alt="ioHire logo" />
       <div class="brand__name"><span class="brand__io">IO</span>Hire</div>
     </a>
 
-    <nav class="nav">
-      @for (item of navItems(); track item.label) {
-        <a
-          [routerLink]="item.routerLink"
-          [queryParams]="item.queryParams"
-          routerLinkActive="is-active"
-          [routerLinkActiveOptions]="{ exact: !!item.exact }"
-        >
-          {{ item.label }}
-        </a>
-      }
-    </nav>
+    <div class="topbar__controls">
+      <nav class="nav">
+        @for (item of navItems(); track item.label) {
+          <a
+            [routerLink]="item.routerLink"
+            [queryParams]="item.queryParams"
+            routerLinkActive="is-active"
+            [routerLinkActiveOptions]="{ exact: !!item.exact }"
+          >
+            {{ item.label }}
+          </a>
+        }
+      </nav>
 
-    <button class="btn btn--ghost btn--sm" type="button" (click)="toggleTheme()">
-      @if (theme.isDark()) { Light mode } @else { Dark mode }
-    </button>
+      @if (showPortalThemeToggle()) {
+        <button class="btn btn--ghost btn--sm topbar__theme-btn" type="button" (click)="toggleTheme()">
+          <lucide-icon [img]="theme.isDark() ? iconSun : iconMoon" [size]="14" />
+          @if (theme.isDark()) { Light } @else { Dark }
+        </button>
+      }
+    </div>
   </div>
 </header>

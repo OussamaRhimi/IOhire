@@ -1,0 +1,64 @@
+<aside class="admin-sidebar" [class.admin-sidebar--collapsed]="collapsed()">
+  <div class="admin-sidebar__top">
+    <div class="admin-sidebar__brand">
+      <div class="admin-sidebar__title">
+        <span class="admin-sidebar__title-icon">
+          <lucide-icon [img]="iconShield" [size]="14" />
+        </span>
+        @if (!collapsed()) {
+          <span>Admin</span>
+        }
+      </div>
+      @if (!collapsed()) {
+        <div class="admin-sidebar__subtitle muted small">Workspace Control</div>
+      }
+    </div>
+    <button class="btn btn--ghost btn--sm admin-sidebar__toggle" type="button" (click)="toggleCollapse()">
+      <lucide-icon [img]="collapsed() ? iconExpand : iconCollapse" [size]="16" />
+    </button>
+  </div>
+
+  <nav class="admin-nav">
+    @for (item of mainNav; track item.link) {
+      <a
+        [routerLink]="item.link"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        [attr.title]="collapsed() ? item.label : null"
+      >
+        <span class="admin-nav__icon"><lucide-icon [img]="item.icon" [size]="16" /></span>
+        @if (!collapsed()) {
+          <span>{{ item.label }}</span>
+        }
+      </a>
+    }
+
+    @if (!collapsed()) {
+      <div class="admin-nav__section muted small">HR</div>
+    }
+
+    @for (item of hrNav; track item.link) {
+      <a [routerLink]="item.link" routerLinkActive="is-active" [attr.title]="collapsed() ? item.label : null">
+        <span class="admin-nav__icon"><lucide-icon [img]="item.icon" [size]="16" /></span>
+        @if (!collapsed()) {
+          <span>{{ item.label }}</span>
+        }
+      </a>
+    }
+  </nav>
+
+  <div class="admin-sidebar__bottom">
+    <button class="btn btn--ghost" type="button" (click)="toggleTheme()" [attr.title]="collapsed() ? 'Toggle theme' : null">
+      <lucide-icon [img]="theme.isDark() ? iconSun : iconMoon" [size]="16" />
+      @if (!collapsed()) {
+        @if (theme.isDark()) { <span>Light mode</span> } @else { <span>Dark mode</span> }
+      }
+    </button>
+    <button class="btn btn--ghost" type="button" (click)="logout()" [attr.title]="collapsed() ? 'Logout' : null">
+      <lucide-icon [img]="iconLogout" [size]="16" />
+      @if (!collapsed()) {
+        <span>Logout</span>
+      }
+    </button>
+  </div>
+</aside>

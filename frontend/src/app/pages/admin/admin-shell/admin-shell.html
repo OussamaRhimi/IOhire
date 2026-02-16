@@ -1,25 +1,5 @@
 <div class="admin-layout">
-  <aside class="admin-sidebar">
-    <div class="admin-sidebar__top">
-      <div class="admin-sidebar__title">Admin</div>
-      <div class="admin-sidebar__subtitle muted small">Strapi token access</div>
-    </div>
-
-    <nav class="admin-nav">
-      <a routerLink="/admin/analytics" routerLinkActive="is-active">Analytics</a>
-      <div class="admin-nav__section muted small">HR</div>
-      <a routerLink="/admin/hr/jobs" routerLinkActive="is-active">Job postings</a>
-      <a routerLink="/admin/hr/candidates" routerLinkActive="is-active">Candidates</a>
-      <a routerLink="/admin/hr/templates" routerLinkActive="is-active">CV templates</a>
-    </nav>
-
-    <div class="admin-sidebar__bottom">
-      <button class="btn btn--ghost" type="button" (click)="toggleTheme()">
-        @if (theme.isDark()) { Light mode } @else { Dark mode }
-      </button>
-      <button class="btn btn--ghost" type="button" (click)="logout()">Logout</button>
-    </div>
-  </aside>
+  <app-admin-sidebar />
 
   <div class="admin-content">
     <router-outlet />

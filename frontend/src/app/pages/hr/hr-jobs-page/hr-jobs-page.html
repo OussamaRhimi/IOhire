@@ -1,38 +1,145 @@
-<section class="container container--wide">
-  <div class="card">
-    <div class="header-row">
-      <div>
-        <h1>Job postings</h1>
-        <p class="muted">Create and open roles to allow candidates to apply.</p>
-      </div>
-      <div class="actions">
-        <button class="btn btn--ghost" type="button" (click)="refresh()" [disabled]="loading()">Refresh</button>
-        <a class="btn btn--ghost" routerLink="/admin/hr/candidates">Candidates</a>
-      </div>
+<section class="container container--wide hr-jobs-page">
+  <div class="hr-jobs-head">
+    <div>
+      <h1>Job Postings Management</h1>
+      <p class="muted">Create job postings and declare required skills/experience</p>
     </div>
+    <div class="actions">
+      <button class="btn btn--ghost" type="button" (click)="refresh()" [disabled]="loading()">Refresh</button>
+      <button class="btn btn--primary hr-jobs-create-btn" type="button" (click)="openCreateModal()">
+        <lucide-icon [img]="iconPlus" [size]="18" />
+        <span>Create Job Posting</span>
+      </button>
+    </div>
+  </div>
 
-    @if (error()) {
-      <div class="alert alert--error">{{ error() }}</div>
+  @if (error()) {
+    <div class="alert alert--error">{{ error() }}</div>
+  }
+
+  <div class="hr-jobs-list">
+    @if (loading()) {
+      <div class="card skeleton" style="height: 180px"></div>
+      <div class="card skeleton" style="height: 180px"></div>
+    } @else if (!hasJobs()) {
+      <div class="alert">No job postings yet.</div>
+    } @else {
+      @for (job of jobs(); track (job.documentId || job.id)) {
+        <article class="card hr-job-card">
+          <div class="hr-job-card__top">
+            <div class="truncate">
+              <h2 class="hr-job-card__title">{{ job.title || 'Untitled role' }}</h2>
+              <div class="hr-job-meta">
+                @let meta = jobMeta(job);
+                <span>{{ meta.department }}</span>
+                <span>•</span>
+                <span>{{ meta.location }}</span>
+                <span>•</span>
+                <span>{{ meta.employmentType }}</span>
+              </div>
+            </div>
+            <span [class]="statusClass(job.status)">{{ statusLabel(job.status) }}</span>
+          </div>
+
+          <div class="hr-job-card__mid">
+            <div>
+              <h3>Required Skills</h3>
+              <div class="hr-job-skills">
+                @for (skill of jobSkillsRequired(job); track skill) {
+                  <span class="hr-job-skill">{{ skill }}</span>
+                } @empty {
+                  <span class="muted small">Not specified</span>
+                }
+              </div>
+            </div>
+            <div>
+              <h3>Experience Required</h3>
+              <p class="hr-job-experience">{{ jobExperience(job) }}</p>
+            </div>
+          </div>
+
+          <div class="hr-job-card__bottom">
+            <div class="hr-job-stats">
+              <span><lucide-icon [img]="iconUsers" [size]="15" /> {{ applicantCount(job) }} applicants</span>
+              <span><lucide-icon [img]="iconCalendar" [size]="15" /> Posted {{ postedDate(job) }}</span>
+            </div>
+
+            <div class="hr-job-actions">
+              <select
+                class="input input--sm"
+                [value]="job.status || 'draft'"
+                (change)="setStatus(job, $any($event.target).value)"
+                [disabled]="saving()"
+              >
+                @if (statuses().length === 0) {
+                  <option value="draft">Draft</option>
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
+                } @else {
+                  @for (s of statuses(); track s) {
+                    <option [value]="s">{{ statusLabel(s) }}</option>
+                  }
+                }
+              </select>
+
+              <button class="btn btn--ghost hr-job-icon-btn" type="button" (click)="openEditModal(job)">
+                <lucide-icon [img]="iconEdit" [size]="16" />
+              </button>
+              <button class="btn btn--ghost hr-job-icon-btn hr-job-icon-btn--danger" type="button" (click)="delete(job)">
+                <lucide-icon [img]="iconTrash" [size]="16" />
+              </button>
+            </div>
+          </div>
+        </article>
+      }
     }
+  </div>
+</section>
 
-    <div class="card" style="margin-top: 12px">
-      <h2>Create</h2>
-      <form class="form" [formGroup]="createForm" (ngSubmit)="create()">
+@if (showModal()) {
+  <div class="hr-job-modal-backdrop" (click)="closeModal()">
+    <div class="hr-job-modal card" (click)="$event.stopPropagation()">
+      <div class="hr-job-modal__head">
+        <h2>{{ modalTitle() }}</h2>
+        <button class="btn btn--ghost hr-job-icon-btn" type="button" (click)="closeModal()">
+          <lucide-icon [img]="iconClose" [size]="16" />
+        </button>
+      </div>
+
+      <form class="hr-job-form" [formGroup]="createForm" (ngSubmit)="submitModal()">
+        <label class="field">
+          <span class="field__label">Job Title</span>
+          <input class="input" formControlName="title" placeholder="e.g., Senior Frontend Developer" />
+        </label>
+
         <div class="grid2">
           <label class="field">
-            <span class="field__label">Title</span>
-            <input class="input" formControlName="title" placeholder="Frontend Engineer" />
+            <span class="field__label">Department</span>
+            <input class="input" formControlName="department" placeholder="e.g., Engineering" />
           </label>
+
+          <label class="field">
+            <span class="field__label">Location</span>
+            <input class="input" formControlName="location" placeholder="e.g., Remote" />
+          </label>
+        </div>
+
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Type</span>
+            <input class="input" formControlName="employmentType" placeholder="e.g., Full-time" />
+          </label>
+
           <label class="field">
             <span class="field__label">Status</span>
             <select class="input" formControlName="status">
               @if (statuses().length === 0) {
-                <option value="draft">draft</option>
-                <option value="open">open</option>
-                <option value="closed">closed</option>
+                <option value="draft">Draft</option>
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
               } @else {
                 @for (s of statuses(); track s) {
-                  <option [value]="s">{{ s }}</option>
+                  <option [value]="s">{{ statusLabel(s) }}</option>
                 }
               }
             </select>
@@ -40,88 +147,37 @@
         </div>
 
         <label class="field">
-          <span class="field__label">Description</span>
-          <textarea
-            class="input"
-            rows="5"
-            formControlName="description"
-            placeholder="Role overview, responsibilities…"
-          ></textarea>
+          <span class="field__label">Required Skills (comma-separated)</span>
+          <input class="input" formControlName="skillsRequired" placeholder="e.g., Angular, TypeScript, RxJS" />
         </label>
 
         <div class="grid2">
           <label class="field">
-            <span class="field__label">Min years experience (optional)</span>
-            <input class="input" type="number" min="0" step="1" formControlName="minYearsExperience" placeholder="2" />
+            <span class="field__label">Nice-to-have Skills (comma-separated)</span>
+            <input class="input" formControlName="skillsNiceToHave" placeholder="e.g., NgRx, Docker" />
           </label>
+
           <label class="field">
-            <span class="field__label">Required skills (optional)</span>
-            <input class="input" formControlName="skillsRequired" placeholder="Angular, TypeScript, REST" />
-            <div class="field__hint">Comma or new-line separated.</div>
+            <span class="field__label">Experience Required</span>
+            <input class="input" type="number" min="0" step="1" formControlName="minYearsExperience" placeholder="e.g., 5" />
           </label>
         </div>
 
         <label class="field">
-          <span class="field__label">Nice-to-have skills (optional)</span>
-          <input class="input" formControlName="skillsNiceToHave" placeholder="RxJS, NgRx, Strapi" />
-          <div class="field__hint">Comma or new-line separated.</div>
+          <span class="field__label">Job Description</span>
+          <textarea class="input" rows="5" formControlName="description" placeholder="Describe the role and responsibilities..."></textarea>
         </label>
 
         <label class="field">
-          <span class="field__label">Requirements notes (optional)</span>
-          <textarea class="input" rows="3" formControlName="requirementsNotes" placeholder="Anything the AI should consider…"></textarea>
+          <span class="field__label">Additional Notes</span>
+          <textarea class="input" rows="3" formControlName="requirementsNotes" placeholder="Optional details for evaluators..."></textarea>
         </label>
 
-        <div class="actions">
-          <button class="btn btn--primary" type="submit" [disabled]="saving()">
-            @if (saving()) { Saving… } @else { Create job }
-          </button>
+        <div class="hr-job-modal__foot">
+          <button class="btn btn--ghost" type="button" (click)="closeModal()" [disabled]="saving()">Cancel</button>
+          <button class="btn btn--primary" type="submit" [disabled]="saving()">{{ saving() ? 'Saving...' : submitLabel() }}</button>
         </div>
       </form>
     </div>
-
-    <div style="margin-top: 14px">
-      @if (loading()) {
-        <div class="skeleton" style="height: 42px; width: 100%"></div>
-        <div class="skeleton" style="height: 42px; width: 100%; margin-top: 10px"></div>
-      } @else if (!hasJobs()) {
-        <div class="alert">No job postings yet.</div>
-      } @else {
-        <div class="table">
-          <div class="table__head">
-            <div>Title</div>
-            <div>Status</div>
-            <div>Created</div>
-            <div></div>
-          </div>
-          @for (job of jobs(); track (job.documentId || job.id)) {
-            <div class="table__row">
-              <div class="truncate">
-                <div class="strong">{{ job.title || '—' }}</div>
-                <div class="muted small truncate">{{ job.description || '' }}</div>
-              </div>
-              <div>
-                <span class="badge">{{ job.status || '—' }}</span>
-              </div>
-              <div class="muted small">{{ formatDateTime(job.createdAt) }}</div>
-              <div class="actions actions--right">
-                <button class="btn btn--ghost" type="button" (click)="setStatus(job, 'draft')" [disabled]="saving()">
-                  Draft
-                </button>
-                <button class="btn btn--ghost" type="button" (click)="setStatus(job, 'open')" [disabled]="saving()">
-                  Open
-                </button>
-                <button class="btn btn--ghost" type="button" (click)="setStatus(job, 'closed')" [disabled]="saving()">
-                  Close
-                </button>
-                <button class="btn btn--danger" type="button" (click)="delete(job)" [disabled]="saving()">
-                  Delete
-                </button>
-              </div>
-            </div>
-          }
-        </div>
-      }
-    </div>
   </div>
-</section>
+}

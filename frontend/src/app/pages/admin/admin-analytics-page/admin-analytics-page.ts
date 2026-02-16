@@ -10,11 +10,14 @@ import {
   ViewChild,
 } from '@angular/core';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
+import { LucideAngularModule, type LucideIconData } from 'lucide-angular';
+import { Activity, BarChart3, BriefcaseBusiness, Clock3, RefreshCw, Target, Users } from 'lucide-angular/src/icons';
 import { formatDateTime } from '../../../core/format/date';
 import { toErrorMessage } from '../../../core/http/http-error';
 import { PortalThemeService } from '../../../core/theme/portal-theme.service';
 import { StrapiApi } from '../../../core/strapi/strapi.api';
 import { CandidateStatus, HrCandidate, HrJobPosting, JobPostingStatus } from '../../../core/strapi/strapi.types';
+import { RevealOnScrollDirective } from '../../../shared/animations/reveal-on-scroll.directive';
 
 Chart.register(...registerables);
 
@@ -69,7 +72,9 @@ function themeVars() {
 
 @Component({
   selector: 'app-admin-analytics-page',
+  imports: [LucideAngularModule, RevealOnScrollDirective],
   templateUrl: './admin-analytics-page.html',
+  styleUrl: './admin-analytics-page.css',
 })
 export class AdminAnalyticsPage implements AfterViewInit, OnDestroy {
   private readonly api = inject(StrapiApi);
@@ -127,6 +132,13 @@ export class AdminAnalyticsPage implements AfterViewInit, OnDestroy {
   private charts: Chart[] = [];
 
   formatDateTime = formatDateTime;
+  readonly iconRefresh: LucideIconData = RefreshCw;
+  readonly iconJobs: LucideIconData = BriefcaseBusiness;
+  readonly iconCandidates: LucideIconData = Users;
+  readonly iconActivity: LucideIconData = Activity;
+  readonly iconTarget: LucideIconData = Target;
+  readonly iconClock: LucideIconData = Clock3;
+  readonly iconChart: LucideIconData = BarChart3;
 
   constructor() {
     effect(() => {

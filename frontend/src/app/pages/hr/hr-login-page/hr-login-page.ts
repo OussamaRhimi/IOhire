@@ -1,6 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { LucideAngularModule, type LucideIconData } from 'lucide-angular';
+import { LockKeyhole, LogIn, Mail, Shield } from 'lucide-angular/src/icons';
 import { setHrJwt } from '../../../core/auth/auth.storage';
 import { toErrorMessage } from '../../../core/http/http-error';
 import { StrapiApi } from '../../../core/strapi/strapi.api';
@@ -9,7 +11,7 @@ import { Topbar } from '../../../shared/topbar/topbar';
 
 @Component({
   selector: 'app-hr-login-page',
-  imports: [ReactiveFormsModule, Topbar, Footer],
+  imports: [ReactiveFormsModule, Topbar, Footer, LucideAngularModule],
   templateUrl: './hr-login-page.html',
 })
 export class HrLoginPage {
@@ -25,6 +27,10 @@ export class HrLoginPage {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
   });
+  readonly iconShield: LucideIconData = Shield;
+  readonly iconMail: LucideIconData = Mail;
+  readonly iconLock: LucideIconData = LockKeyhole;
+  readonly iconLogin: LucideIconData = LogIn;
 
   async save() {
     if (this.form.invalid) {

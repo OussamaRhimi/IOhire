@@ -1,7 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
-import { clearHrJwt } from '../../../core/auth/auth.storage';
 import { formatDateTime } from '../../../core/format/date';
 import { toErrorMessage } from '../../../core/http/http-error';
 import { StrapiApi } from '../../../core/strapi/strapi.api';
@@ -81,6 +80,15 @@ function formatDuration(daysTotal: number): string {
   return parts.join(' ');
 }
 
+function formatBytes(bytes: number | null | undefined): string {
+  if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) return '-';
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${Math.round(kb)} KB`;
+  const mb = kb / 1024;
+  return `${mb.toFixed(1)} MB`;
+}
+
 @Component({
   selector: 'app-hr-candidate-page',
   templateUrl: './hr-candidate-page.html',
@@ -118,6 +126,29 @@ export class HrCandidatePage {
   });
 
   readonly standardizedMarkdown = computed(() => this.candidate()?.standardizedCvMarkdown ?? null);
+  readonly extracted = computed<any>(() => this.candidate()?.extractedData ?? null);
+
+  readonly summaryText = computed(() => {
+    const summary = this.extracted()?.summary;
+    if (typeof summary === 'string' && summary.trim()) return summary.trim();
+    if (Array.isArray(summary)) {
+      const joined = summary.filter((v) => typeof v === 'string').join(' ').trim();
+      if (joined) return joined;
+    }
+    return 'No professional summary extracted yet.';
+  });
+
+  readonly contactInfo = computed(() => {
+    const extracted = this.extracted();
+    const contact = extracted?.contact ?? {};
+    return {
+      fullName: this.candidate()?.fullName || contact?.fullName || '-',
+      email: this.candidate()?.email || contact?.email || '-',
+      phone: typeof contact?.phone === 'string' && contact.phone.trim() ? contact.phone.trim() : '-',
+      location: typeof contact?.location === 'string' && contact.location.trim() ? contact.location.trim() : '-',
+      links: toStringArray(contact?.links),
+    };
+  });
 
   readonly extractedSkills = computed(() => {
     const extracted: any = this.candidate()?.extractedData ?? null;
@@ -197,6 +228,37 @@ export class HrCandidatePage {
     };
   });
 
+  readonly educationItems = computed(() => {
+    const extracted: any = this.extracted();
+    const education = Array.isArray(extracted?.education) ? extracted.education : [];
+    return education
+      .map((e: any) => {
+        const degree = typeof e?.degree === 'string' ? e.degree.trim() : '';
+        const school = typeof e?.school === 'string' ? e.school.trim() : '';
+        const startDate = typeof e?.startDate === 'string' ? e.startDate.trim() : '';
+        const endDate = typeof e?.endDate === 'string' ? e.endDate.trim() : '';
+        return {
+          degree: degree || 'Education',
+          school: school || '-',
+          period: [startDate, endDate].filter(Boolean).join(' - ') || '-',
+        };
+      })
+      .filter((e: any) => e.degree || e.school || e.period);
+  });
+
+  readonly presentInfo = computed(() => {
+    const contact = this.contactInfo();
+    return [
+      { label: 'Personal Info', present: contact.fullName !== '-' || contact.email !== '-' },
+      { label: 'Work Experience', present: this.experienceTimeline().roles.length > 0 },
+      { label: 'Education', present: this.educationItems().length > 0 },
+      { label: 'Skills', present: this.extractedSkills().length > 0 },
+      { label: 'Contact Details', present: contact.phone !== '-' || contact.location !== '-' || contact.links.length > 0 },
+    ];
+  });
+
+  readonly missingInfo = computed(() => this.missing().map((m) => ({ label: m })));
+
   readonly minYearsText = computed(() => {
     const years = this.candidate()?.jobPosting?.requirements?.minYearsExperience;
     return typeof years === 'number' ? String(years) : '—';
@@ -226,6 +288,7 @@ export class HrCandidatePage {
   });
 
   formatDateTime = formatDateTime;
+  formatBytes = formatBytes;
 
   async ngOnInit() {
     await Promise.all([this.refresh(), this.loadTemplates()]);
@@ -285,6 +348,8 @@ export class HrCandidatePage {
     if (!id) return;
     if (this.saving()) return;
     if (!nextKey) return;
+    const previousKey = this.selectedTemplateKey();
+    const previousCandidate = this.candidate();
 
     try {
       this.saving.set(true);
@@ -292,13 +357,13 @@ export class HrCandidatePage {
       this.selectedTemplateKey.set(nextKey);
       const docId = this.candidate()?.documentId ?? null;
       await this.api.setHrCandidateTemplate({ id, documentId: docId }, nextKey);
-      // Update local state immediately; then refresh to ensure we reflect DB values.
+      // Update local state immediately to avoid UI reset/flicker.
       const current = this.candidate();
       if (current) this.candidate.set({ ...current, cvTemplateKey: nextKey });
-      await this.refresh();
     } catch (e) {
+      this.selectedTemplateKey.set(previousKey);
+      this.candidate.set(previousCandidate);
       this.error.set(toErrorMessage(e));
-      await this.refresh();
     } finally {
       this.saving.set(false);
     }
@@ -321,10 +386,5 @@ export class HrCandidatePage {
     } finally {
       this.saving.set(false);
     }
-  }
-
-  logout() {
-    clearHrJwt();
-    void this.router.navigate(['/hr/login']);
   }
 }

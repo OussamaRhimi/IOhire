@@ -147,6 +147,18 @@ export class StrapiApi {
     await firstValueFrom(this.http.post('/api/job-postings', { data: input }));
   }
 
+  async updateHrJobPosting(
+    entityKeys: string[],
+    patch: { title: string; description: string; status: JobPostingStatus; requirements?: JobRequirements | null }
+  ): Promise<void> {
+    const paths = entityKeys
+      .map((k) => (typeof k === 'string' ? k.trim() : ''))
+      .filter(Boolean)
+      .map((k) => `/api/job-postings/${encodeURIComponent(k)}`);
+
+    await this.putFirstOk(paths, { data: patch });
+  }
+
   async updateHrJobPostingStatus(entityKeys: string[], status: JobPostingStatus): Promise<void> {
     const paths = entityKeys
       .map((k) => (typeof k === 'string' ? k.trim() : ''))

@@ -7,7 +7,12 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./pages/public/public-shell/public-shell').then((m) => m.PublicShell),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'apply' },
+      { path: '', pathMatch: 'full', redirectTo: 'home' },
+      {
+        path: 'home',
+        title: 'Home',
+        loadComponent: () => import('./pages/public/home-page/home-page').then((m) => m.HomePage),
+      },
       {
         path: 'apply',
         title: 'Apply',
@@ -89,5 +94,5 @@ export const routes: Routes = [
       },
     ],
   },
-  { path: '**', redirectTo: 'apply' },
+  { path: '**', redirectTo: 'home' },
 ];

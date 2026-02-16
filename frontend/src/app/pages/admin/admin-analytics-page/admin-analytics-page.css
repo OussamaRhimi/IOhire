@@ -1,0 +1,124 @@
+.analytics-page {
+  display: grid;
+  gap: 14px;
+}
+
+.analytics-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.analytics-refresh-btn {
+  min-height: 40px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.analytics-grid--lead {
+  margin-top: 4px;
+}
+
+.analytics-kpi-wrap {
+  border-color: color-mix(in srgb, var(--border) 72%, var(--accent-soft-border) 28%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 95%, var(--accent) 5%), var(--panel));
+}
+
+.analytics-kpi-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.analytics-kpi {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.analytics-kpi__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-soft-border);
+  background: var(--accent-soft-bg);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.analytics-chart-card {
+  border-color: color-mix(in srgb, var(--border) 72%, var(--accent-soft-border) 28%);
+  background: linear-gradient(180deg, var(--panel), color-mix(in srgb, var(--panel) 96%, var(--accent) 4%));
+}
+
+.analytics-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.analytics-card-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.analytics-chart-h {
+  height: 260px;
+  margin-top: 10px;
+}
+
+.analytics-chart-h--tall {
+  height: 320px;
+}
+
+.analytics-fade {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: analytics-fade-up 460ms ease forwards;
+}
+
+@media (min-width: 760px) {
+  .analytics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .analytics-kpi-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1040px) {
+  .analytics-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@keyframes analytics-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,205 @@
+<section class="landing">
+  <div class="landing-bg">
+    <div class="landing-bg__gradient" [style.transform]="'translateY(' + scrollY() * 0.25 + 'px)'"></div>
+    <div class="landing-bg__blob landing-bg__blob--a"></div>
+    <div class="landing-bg__blob landing-bg__blob--b"></div>
+    <div class="landing-bg__blob landing-bg__blob--c"></div>
+  </div>
+
+  <div class="landing-section container container--wide">
+    <div class="landing-hero">
+      <div class="landing-badge landing-animate landing-animate--1">
+        <lucide-icon [img]="iconBuilding2" [size]="14" />
+        <span>Powered by {{ companyName }}</span>
+        <span class="dot">.</span>
+        <lucide-icon [img]="iconMapPin" [size]="14" />
+        <span>{{ companyLocation }}</span>
+      </div>
+
+      <div class="landing-logo-wrap landing-animate landing-animate--2">
+        <div class="landing-logo-glow"></div>
+        <div class="landing-logo">
+          <img src="/iohire-logo.png" alt="{{ productName }} logo" width="54" height="54" decoding="async" />
+        </div>
+      </div>
+
+      <h1 class="landing-title landing-animate landing-animate--3">
+        {{ productName }}
+        <span>CV Parser and Evaluation Platform</span>
+      </h1>
+
+      <p class="landing-subtitle landing-animate landing-animate--4">
+        Transform recruitment with AI-powered CV parsing and candidate scoring. Reduce hiring cycle time and improve
+        decision quality with structured, reliable profile data.
+      </p>
+
+      <div class="landing-cta landing-animate landing-animate--5">
+        <a class="btn btn--primary landing-cta__btn" routerLink="/admin">
+          <lucide-icon [img]="iconBarChart3" [size]="16" />
+          <span>HR Dashboard</span>
+          <lucide-icon [img]="iconArrowRight" [size]="16" />
+        </a>
+        <a class="btn landing-cta__btn" routerLink="/apply">
+          <lucide-icon [img]="iconUpload" [size]="16" />
+          <span>Candidate Portal</span>
+          <lucide-icon [img]="iconArrowRight" [size]="16" />
+        </a>
+      </div>
+
+      <div class="landing-stats landing-animate landing-animate--6">
+        @for (stat of stats; track stat.label; let idx = $index) {
+          <article class="landing-stat card" appRevealOnScroll [revealDelay]="idx * 80">
+            <div class="landing-stat__value">{{ stat.value }}</div>
+            <div class="landing-stat__label">{{ stat.label }}</div>
+          </article>
+        }
+      </div>
+    </div>
+  </div>
+
+  @defer (on viewport) {
+    <div class="landing-section landing-section--solid">
+      <div class="container container--wide">
+        <div class="landing-heading" appRevealOnScroll>
+          <h2>Platform Objectives</h2>
+          <p>Everything needed to modernize recruitment workflows end to end.</p>
+        </div>
+        <div class="feature-grid">
+          @for (feature of features; track feature.title; let i = $index) {
+            <article
+              class="feature-card card"
+              appRevealOnScroll
+              [revealDelay]="i * 80"
+              (mouseenter)="setActiveFeature(i)"
+              [class.is-active]="activeFeature() === i"
+            >
+              <div class="feature-icon">
+                <lucide-icon [img]="feature.icon" [size]="26" />
+              </div>
+              <h3>{{ feature.title }}</h3>
+              <p>{{ feature.description }}</p>
+            </article>
+          }
+        </div>
+      </div>
+    </div>
+  } @placeholder {
+    <div class="landing-section landing-section--solid">
+      <div class="container container--wide">
+        <div class="card landing-skeleton"></div>
+      </div>
+    </div>
+  }
+
+  @defer (on viewport) {
+    <div class="landing-section">
+      <div class="container container--wide">
+        <div class="company card" appRevealOnScroll>
+          <div class="company__left">
+            <div class="company__tag">About Us</div>
+            <h2>{{ companyName }}</h2>
+            <p>
+              Leading technology and innovation company specialized in digital transformation and enterprise software
+              delivery.
+            </p>
+            <div class="company-contact">
+              <div><lucide-icon [img]="iconMapPin" [size]="16" /> <span>{{ companyLocation }}</span></div>
+              <div><lucide-icon [img]="iconMail" [size]="16" /> <span>contact@iovision.tn</span></div>
+              <div><lucide-icon [img]="iconPhone" [size]="16" /> <span>+216 XX XXX XXX</span></div>
+            </div>
+            <div class="company-global">
+              <lucide-icon [img]="iconGlobe" [size]="16" /> Serving clients globally from Tunisia
+            </div>
+          </div>
+          <div class="company__right">
+            <h3>Our Expertise</h3>
+            <p>We combine local talent with global engineering standards to build high-impact products.</p>
+            <div class="expertise-list">
+              @for (item of expertise; track item; let idx = $index) {
+                <div class="expertise-item" appRevealOnScroll [revealDelay]="120 + idx * 60">
+                  <lucide-icon [img]="iconCheckCircle" [size]="18" />
+                  <span>{{ item }}</span>
+                </div>
+              }
+            </div>
+            <div class="innovation-box" appRevealOnScroll [revealDelay]="300">
+              <lucide-icon [img]="iconAward" [size]="18" />
+              <div>
+                <strong>Innovation Hub</strong>
+                <p>Sfax is one of Tunisia's strongest technology centers with a growing software ecosystem.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  } @placeholder {
+    <div class="landing-section">
+      <div class="container container--wide">
+        <div class="card landing-skeleton"></div>
+      </div>
+    </div>
+  }
+
+  @defer (on viewport) {
+    <div class="landing-section landing-section--solid">
+      <div class="container container--wide">
+        <div class="landing-heading" appRevealOnScroll>
+          <h2>Technical Stack</h2>
+          <p>Built with modern enterprise-ready technologies.</p>
+        </div>
+        <div class="stack-grid">
+          <article class="stack-card card" appRevealOnScroll [revealDelay]="0">
+            <h3>Frontend</h3>
+            <p>Angular</p>
+          </article>
+          <article class="stack-card card" appRevealOnScroll [revealDelay]="80">
+            <h3>Backend</h3>
+            <p>Strapi</p>
+          </article>
+          <article class="stack-card card" appRevealOnScroll [revealDelay]="160">
+            <h3>Database</h3>
+            <p>PostgreSQL</p>
+          </article>
+          <article class="stack-card card" appRevealOnScroll [revealDelay]="240">
+            <h3>Deployment</h3>
+            <p>Docker</p>
+          </article>
+        </div>
+      </div>
+    </div>
+  } @placeholder {
+    <div class="landing-section landing-section--solid">
+      <div class="container container--wide">
+        <div class="card landing-skeleton"></div>
+      </div>
+    </div>
+  }
+
+  @defer (on viewport) {
+    <div class="landing-section">
+      <div class="container container--wide">
+        <div class="landing-final card" appRevealOnScroll>
+          <h2>Ready to Transform Your Hiring?</h2>
+          <p>Centralize applications, evaluate faster, and identify top candidates with reliable structured data.</p>
+          <div class="landing-cta">
+            <a class="btn landing-final__btn" routerLink="/admin">
+              <span>Get Started</span>
+              <lucide-icon [img]="iconArrowRight" [size]="16" />
+            </a>
+            <a class="btn btn--primary landing-final__btn" routerLink="/apply">
+              <span>Submit CV</span>
+              <lucide-icon [img]="iconArrowRight" [size]="16" />
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  } @placeholder {
+    <div class="landing-section">
+      <div class="container container--wide">
+        <div class="card landing-skeleton"></div>
+      </div>
+    </div>
+  }
+</section>

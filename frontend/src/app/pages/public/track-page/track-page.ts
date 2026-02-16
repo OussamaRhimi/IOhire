@@ -1,6 +1,8 @@
 import { Component, computed, effect, inject, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { LucideAngularModule, type LucideIconData } from 'lucide-angular';
+import { Download, RefreshCw, Search, ShieldCheck, Trash2 } from 'lucide-angular/src/icons';
 import { formatDateTime } from '../../../core/format/date';
 import { toErrorMessage } from '../../../core/http/http-error';
 import { StrapiApi } from '../../../core/strapi/strapi.api';
@@ -8,7 +10,7 @@ import { PublicApplicationStatus } from '../../../core/strapi/strapi.types';
 
 @Component({
   selector: 'app-track-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, LucideAngularModule],
   templateUrl: './track-page.html',
 })
 export class TrackPage implements OnDestroy {
@@ -34,6 +36,11 @@ export class TrackPage implements OnDestroy {
   private pollTimer: number | null = null;
 
   formatDateTime = formatDateTime;
+  readonly iconSearch: LucideIconData = Search;
+  readonly iconRefresh: LucideIconData = RefreshCw;
+  readonly iconDownload: LucideIconData = Download;
+  readonly iconDelete: LucideIconData = Trash2;
+  readonly iconShield: LucideIconData = ShieldCheck;
 
   constructor() {
     effect(() => {

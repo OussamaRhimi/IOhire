@@ -1,6 +1,9 @@
-<section class="container">
-  <div class="card">
-    <h1>Track application</h1>
+<section class="container portal-page">
+  <div class="card portal-hero">
+    <div class="portal-hero__title">
+      <span class="portal-hero__icon"><lucide-icon [img]="iconShield" [size]="16" /></span>
+      <h1>Track application</h1>
+    </div>
     <p class="muted">Enter your token to view status and download your standardized CV when ready.</p>
 
     @if (error()) {
@@ -18,43 +21,41 @@
 
       <div class="actions">
         <button class="btn btn--primary" type="submit" [disabled]="loading()">
-          @if (loading()) { Loading… } @else { Refresh }
+          <lucide-icon [img]="iconRefresh" [size]="14" />
+          @if (loading()) { Loading... } @else { Refresh }
         </button>
-        <button
-          class="btn btn--ghost"
-          type="button"
-          (click)="downloadPdf()"
-          [disabled]="!status()?.standardizedCvReady"
-        >
-          Download standardized CV (PDF)
+        <button class="btn btn--ghost" type="button" (click)="downloadPdf()" [disabled]="!status()?.standardizedCvReady">
+          <lucide-icon [img]="iconDownload" [size]="14" />
+          <span>Download standardized CV (PDF)</span>
         </button>
         <button class="btn btn--danger" type="button" (click)="deleteApplication()" [disabled]="loading()">
-          Delete application
+          <lucide-icon [img]="iconDelete" [size]="14" />
+          <span>Delete application</span>
         </button>
       </div>
     </form>
 
     @if (polling()) {
       <div class="hint" style="margin-top: 10px">
-        Auto-refreshing… ({{ pollSeconds() }}s)
+        Auto-refreshing... ({{ pollSeconds() }}s)
         <button class="btn btn--ghost btn--sm" type="button" (click)="stopPolling()">Stop</button>
       </div>
     }
 
     @if (status()) {
-      <div class="card" style="margin-top: 16px">
+      <div class="card portal-card" style="margin-top: 16px">
         <div class="kv">
           <div class="kv__row">
             <div class="kv__k">Job</div>
-            <div class="kv__v">{{ status()?.jobTitle || '—' }}</div>
+            <div class="kv__v">{{ status()?.jobTitle || '-' }}</div>
           </div>
           <div class="kv__row">
             <div class="kv__k">Status</div>
-            <div class="kv__v"><span class="badge">{{ status()?.status || '—' }}</span></div>
+            <div class="kv__v"><span class="badge">{{ status()?.status || '-' }}</span></div>
           </div>
           <div class="kv__row">
             <div class="kv__k">Score</div>
-            <div class="kv__v">{{ status()?.score ?? '—' }}</div>
+            <div class="kv__v">{{ status()?.score ?? '-' }}</div>
           </div>
           <div class="kv__row">
             <div class="kv__k">Updated</div>

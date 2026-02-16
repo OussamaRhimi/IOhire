@@ -19,23 +19,6 @@ const PARSER_SYSTEM_PROMPT =
   'summary?: string, skills: string[], experience: Array<{ company?: string, title?: string, startDate?: string, endDate?: string, highlights?: string[] }>, ' +
   'education?: Array<{ school?: string, degree?: string, startDate?: string, endDate?: string }>, certifications?: string[], projects?: Array<{ name?: string, description?: string, links?: string[] }> }';
 
-const EVALUATOR_SYSTEM_PROMPT =
-  "Compare the candidate's extracted profile against the JobPosting requirements. " +
-  'You will be given:\n' +
-  '- requirements JSON (may include skillsRequired, skillsNiceToHave, minYearsExperience, notes)\n' +
-  '- extracted candidate JSON (includes skills[], experience[], education[], contact, summary)\n' +
-  'Rules:\n' +
-  '- matchedSkills/missingSkills MUST be based on requirements.skillsRequired (+ optionally skillsNiceToHave) compared to candidate skills/experience.\n' +
-  '- Prefer exact matches; allow obvious normalization (case, punctuation, whitespace, "js" vs "javascript"). Do NOT invent skills.\n' +
-  '- If a required skill is only implied by experience text, you may count it as matched, but mention the evidence in notes.\n' +
-  'Compute:\n' +
-  '- fitScore (0-100): weight required skills heavily (e.g., 70%), then nice-to-have (e.g., 20%), then experience relevance (e.g., 10%).\n' +
-  '- completenessScore (0-100): contact completeness + presence of experience dates + education.\n' +
-  '- score (0-100): combine fit + completeness; explain the weighting briefly in notes.\n' +
-  'Also list missingFields (e.g., email, phone, education, experienceDates, location, links). ' +
-  'Return ONLY valid JSON (no markdown, no code fences) with this shape: ' +
-  '{ score: number, fitScore: number, completenessScore: number, matchedSkills: string[], missingSkills: string[], missingFields: string[], notes?: string }';
-
 const GENERATOR_SYSTEM_PROMPT =
   "Generate polished resume content from the candidate's extracted data. " +
   'Company style guide: concise, ATS-friendly, clear headings, bullet highlights, no tables. ' +
@@ -43,6 +26,33 @@ const GENERATOR_SYSTEM_PROMPT =
   '{ summary?: string, skills: string[], experience: Array<{ company?: string, title?: string, startDate?: string, endDate?: string, highlights?: string[] }>, ' +
   'education?: Array<{ school?: string, degree?: string, startDate?: string, endDate?: string }>, certifications?: string[], projects?: Array<{ name?: string, description?: string, links?: string[] }>, ' +
   'languages?: string[], qualities?: string[], interests?: string[] }';
+
+const MONTH_MAP: Array<[RegExp, string]> = [
+  [/\bjanvier\b/gi, 'January'],
+  [/\bfevrier\b|\bf[ée]vrier\b/gi, 'February'],
+  [/\bmars\b/gi, 'March'],
+  [/\bavril\b/gi, 'April'],
+  [/\bmai\b/gi, 'May'],
+  [/\bjuin\b/gi, 'June'],
+  [/\bjuillet\b/gi, 'July'],
+  [/\bao[uû]t\b/gi, 'August'],
+  [/\bseptembre\b/gi, 'September'],
+  [/\boctobre\b/gi, 'October'],
+  [/\bnovembre\b/gi, 'November'],
+  [/\bd[ée]cembre\b/gi, 'December'],
+  [/\bsept\b/gi, 'September'],
+];
+
+const SKILL_ALIAS_GROUPS: Record<string, string[]> = {
+  vue: ['vuejs', 'vue js', 'vue.js'],
+  angular: ['angularjs', 'angular js'],
+  nextjs: ['next js', 'next.js'],
+  nodejs: ['node js', 'node.js'],
+  springboot: ['spring boot', 'spring-boot'],
+  mongodb: ['mongo db', 'mongo-db', 'mango db', 'mangodb'],
+  mysql: ['my sql'],
+  tailwindcss: ['tailwind css'],
+};
 
 function truncateForModel(text: string, maxChars: number): string {
   const s = String(text ?? '');
@@ -74,6 +84,399 @@ function clampScore(value: unknown): number | null {
 function pickTemplateKey(candidate: CandidateEntity): CvTemplateKey {
   const value = candidate.cvTemplateKey ?? undefined;
   return isCvTemplateKey(value) ? value : 'standard';
+}
+
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((v) => (typeof v === 'string' ? v.trim() : ''))
+    .filter(Boolean);
+}
+
+function uniqStrings(items: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of items) {
+    const v = raw.trim();
+    if (!v) continue;
+    const key = v.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(v);
+  }
+  return out;
+}
+
+function normalizeDateText(input: unknown): string | null {
+  if (typeof input !== 'string') return null;
+  let out = input.trim();
+  if (!out) return null;
+
+  out = out.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+  for (const [rx, replacement] of MONTH_MAP) out = out.replace(rx, replacement);
+
+  out = out.replace(/\bactuellement\b|\ben cours\b/gi, 'Present');
+  return out.trim() || null;
+}
+
+function normalizeParsedData(parsed: Record<string, unknown>): Record<string, unknown> {
+  const contactRaw = (parsed.contact && typeof parsed.contact === 'object' ? parsed.contact : {}) as Record<string, unknown>;
+
+  const contact = {
+    fullName: asTrimmedString(contactRaw.fullName),
+    email: asTrimmedString(contactRaw.email),
+    phone: asTrimmedString(contactRaw.phone),
+    location: asTrimmedString(contactRaw.location),
+    links: uniqStrings(asStringArray(contactRaw.links)),
+  };
+
+  const skills = uniqStrings(asStringArray(parsed.skills));
+
+  const experienceRaw = Array.isArray(parsed.experience) ? parsed.experience : [];
+  const experience = experienceRaw
+    .map((row: any) => {
+      const company = asTrimmedString(row?.company);
+      const title = asTrimmedString(row?.title);
+      const startDate = normalizeDateText(row?.startDate);
+      const endDate = normalizeDateText(row?.endDate);
+      const highlights = uniqStrings(asStringArray(row?.highlights));
+      if (!company && !title && !startDate && !endDate && highlights.length === 0) return null;
+      return {
+        ...(company ? { company } : {}),
+        ...(title ? { title } : {}),
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+        ...(highlights.length ? { highlights } : {}),
+      };
+    })
+    .filter(Boolean) as Array<Record<string, unknown>>;
+
+  const educationRaw = Array.isArray(parsed.education) ? parsed.education : [];
+  const education = educationRaw
+    .map((row: any) => {
+      const school = asTrimmedString(row?.school);
+      const degree = asTrimmedString(row?.degree);
+      const startDate = normalizeDateText(row?.startDate);
+      const endDate = normalizeDateText(row?.endDate);
+      if (!school && !degree && !startDate && !endDate) return null;
+      return {
+        ...(school ? { school } : {}),
+        ...(degree ? { degree } : {}),
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+      };
+    })
+    .filter(Boolean) as Array<Record<string, unknown>>;
+
+  const projectsRaw = Array.isArray(parsed.projects) ? parsed.projects : [];
+  const projects = projectsRaw
+    .map((row: any) => {
+      const name = asTrimmedString(row?.name);
+      const description = asTrimmedString(row?.description);
+      const links = uniqStrings(asStringArray(row?.links));
+      if (!name && !description && links.length === 0) return null;
+      return {
+        ...(name ? { name } : {}),
+        ...(description ? { description } : {}),
+        ...(links.length ? { links } : {}),
+      };
+    })
+    .filter(Boolean) as Array<Record<string, unknown>>;
+
+  const summary = asTrimmedString(parsed.summary);
+  const certifications = uniqStrings(asStringArray(parsed.certifications));
+
+  return {
+    ...parsed,
+    contact,
+    skills,
+    experience,
+    education,
+    projects,
+    ...(summary ? { summary } : {}),
+    certifications,
+  };
+}
+
+function normalizeSkillKey(input: string): string {
+  let s = input
+    .toLowerCase()
+    .replace(/[()]/g, ' ')
+    .replace(/[^a-z0-9+#.\s-]/g, ' ')
+    .replace(/[._-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  s = s.replace(/\bmango\s*db\b/g, 'mongodb').replace(/\bmongo\s*db\b/g, 'mongodb');
+  return s;
+}
+
+function compactSkillKey(input: string): string {
+  return normalizeSkillKey(input).replace(/\s+/g, '');
+}
+
+function resolveAliasGroup(compact: string): { canonical: string; aliases: string[] } {
+  for (const [canonical, aliases] of Object.entries(SKILL_ALIAS_GROUPS)) {
+    const aliasCompacts = aliases.map((v) => compactSkillKey(v));
+    if (compact === compactSkillKey(canonical) || aliasCompacts.includes(compact)) {
+      return { canonical, aliases };
+    }
+  }
+  return { canonical: compact, aliases: [] };
+}
+
+function buildSkillVariants(skill: string): Set<string> {
+  const base = normalizeSkillKey(skill);
+  const compact = compactSkillKey(skill);
+  const { canonical, aliases } = resolveAliasGroup(compact);
+  const out = new Set<string>();
+  if (base) out.add(base);
+  if (compact) out.add(compact);
+
+  const canonicalKey = normalizeSkillKey(canonical);
+  const canonicalCompact = compactSkillKey(canonical);
+  if (canonicalKey) out.add(canonicalKey);
+  if (canonicalCompact) out.add(canonicalCompact);
+
+  for (const alias of aliases) {
+    const k = normalizeSkillKey(alias);
+    const c = compactSkillKey(alias);
+    if (k) out.add(k);
+    if (c) out.add(c);
+  }
+
+  return out;
+}
+
+function buildEvidence(parsed: Record<string, unknown>): {
+  textNormalized: string;
+  textCompact: string;
+  skillKeys: Set<string>;
+} {
+  const skills = asStringArray(parsed.skills);
+  const skillKeys = new Set<string>();
+  for (const s of skills) {
+    const k = normalizeSkillKey(s);
+    const c = compactSkillKey(s);
+    if (k) skillKeys.add(k);
+    if (c) skillKeys.add(c);
+  }
+
+  const parts: string[] = [];
+  if (typeof parsed.summary === 'string') parts.push(parsed.summary);
+
+  const experience = Array.isArray(parsed.experience) ? parsed.experience : [];
+  for (const row of experience as any[]) {
+    if (typeof row?.title === 'string') parts.push(row.title);
+    if (typeof row?.company === 'string') parts.push(row.company);
+    for (const h of asStringArray(row?.highlights)) parts.push(h);
+  }
+
+  const projects = Array.isArray(parsed.projects) ? parsed.projects : [];
+  for (const row of projects as any[]) {
+    if (typeof row?.name === 'string') parts.push(row.name);
+    if (typeof row?.description === 'string') parts.push(row.description);
+    for (const link of asStringArray(row?.links)) parts.push(link);
+  }
+
+  const textNormalized = normalizeSkillKey(parts.join(' '));
+  const textCompact = textNormalized.replace(/\s+/g, '');
+
+  return { textNormalized, textCompact, skillKeys };
+}
+
+function hasSkillMatch(requiredSkill: string, evidence: { textNormalized: string; textCompact: string; skillKeys: Set<string> }): boolean {
+  const variants = buildSkillVariants(requiredSkill);
+  for (const variant of variants) {
+    if (!variant) continue;
+    if (evidence.skillKeys.has(variant)) return true;
+
+    if (variant.includes(' ')) {
+      if (evidence.textNormalized.includes(variant)) return true;
+    } else if (evidence.textCompact.includes(variant)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function parseLooseDate(input: unknown): Date | null {
+  const normalized = normalizeDateText(input);
+  if (!normalized) return null;
+
+  const lower = normalized.toLowerCase();
+  if (['present', 'now', 'current', 'today'].includes(lower)) return new Date();
+
+  const yearOnly = /^(\d{4})$/.exec(normalized);
+  if (yearOnly) {
+    const y = Number(yearOnly[1]);
+    if (y >= 1900 && y <= 2100) return new Date(Date.UTC(y, 0, 1));
+  }
+
+  const ym = /^(\d{4})-(\d{1,2})$/.exec(normalized);
+  if (ym) {
+    const y = Number(ym[1]);
+    const m = Number(ym[2]);
+    if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12) return new Date(Date.UTC(y, m - 1, 1));
+  }
+
+  const parsed = Date.parse(normalized);
+  if (!Number.isFinite(parsed)) return null;
+  return new Date(parsed);
+}
+
+function calculateExperienceYears(parsed: Record<string, unknown>): number {
+  const experience = Array.isArray(parsed.experience) ? parsed.experience : [];
+  let totalMs = 0;
+
+  for (const row of experience as any[]) {
+    const start = parseLooseDate(row?.startDate);
+    const end = parseLooseDate(row?.endDate) ?? new Date();
+    if (!start || !end) continue;
+    const delta = Math.max(0, end.getTime() - start.getTime());
+    totalMs += delta;
+  }
+
+  return totalMs / (365.25 * 24 * 60 * 60 * 1000);
+}
+
+function deterministicEvaluate(requirements: unknown, parsed: Record<string, unknown>) {
+  const requirementsObj = (requirements && typeof requirements === 'object' ? requirements : {}) as any;
+  const required = uniqStrings(asStringArray(requirementsObj.skillsRequired));
+  const niceToHave = uniqStrings(asStringArray(requirementsObj.skillsNiceToHave));
+
+  const evidence = buildEvidence(parsed);
+
+  const matchedRequired: string[] = [];
+  const missingRequired: string[] = [];
+  for (const skill of required) {
+    if (hasSkillMatch(skill, evidence)) matchedRequired.push(skill);
+    else missingRequired.push(skill);
+  }
+
+  const matchedNice: string[] = [];
+  const missingNice: string[] = [];
+  for (const skill of niceToHave) {
+    if (hasSkillMatch(skill, evidence)) matchedNice.push(skill);
+    else missingNice.push(skill);
+  }
+
+  const requiredCoverage = required.length > 0 ? matchedRequired.length / required.length : 1;
+  const niceCoverage = niceToHave.length > 0 ? matchedNice.length / niceToHave.length : 1;
+
+  const minYearsRaw = typeof requirementsObj.minYearsExperience === 'number'
+    ? requirementsObj.minYearsExperience
+    : Number(requirementsObj.minYearsExperience);
+  const minYears = Number.isFinite(minYearsRaw) && minYearsRaw > 0 ? minYearsRaw : null;
+  const actualYears = calculateExperienceYears(parsed);
+  const experienceCoverage = minYears ? Math.max(0, Math.min(1, actualYears / minYears)) : 1;
+
+  const fitScore = clampScore(requiredCoverage * 75 + niceCoverage * 15 + experienceCoverage * 10) ?? 0;
+
+  const contact = (parsed.contact && typeof parsed.contact === 'object' ? parsed.contact : {}) as any;
+  const experience = Array.isArray(parsed.experience) ? parsed.experience : [];
+  const education = Array.isArray(parsed.education) ? parsed.education : [];
+
+  const hasFullName = !!asTrimmedString(contact.fullName);
+  const hasEmail = !!asTrimmedString(contact.email);
+  const hasPhone = !!asTrimmedString(contact.phone);
+  const hasLocation = !!asTrimmedString(contact.location);
+  const hasLinks = asStringArray(contact.links).length > 0;
+  const hasSummary = !!asTrimmedString(parsed.summary);
+  const hasEducation = education.length > 0;
+  const hasExperience = experience.length > 0;
+  const hasExperienceDates =
+    hasExperience &&
+    (experience as any[]).every((row) => !!normalizeDateText(row?.startDate) && !!normalizeDateText(row?.endDate));
+
+  let completeness = 0;
+  if (hasFullName) completeness += 10;
+  if (hasEmail) completeness += 20;
+  if (hasPhone) completeness += 10;
+  if (hasLocation) completeness += 10;
+  if (hasLinks) completeness += 5;
+  if (hasSummary) completeness += 10;
+  if (hasExperience) completeness += 15;
+  if (hasExperienceDates) completeness += 10;
+  if (hasEducation) completeness += 10;
+
+  const completenessScore = clampScore(completeness) ?? 0;
+  const score = clampScore(fitScore * 0.75 + completenessScore * 0.25) ?? 0;
+
+  const missingFields: string[] = [];
+  if (!hasFullName) missingFields.push('fullName');
+  if (!hasEmail) missingFields.push('email');
+  if (!hasPhone) missingFields.push('phone');
+  if (!hasLocation) missingFields.push('location');
+  if (!hasLinks) missingFields.push('links');
+  if (!hasSummary) missingFields.push('summary');
+  if (!hasEducation) missingFields.push('education');
+  if (!hasExperience) missingFields.push('experience');
+  if (hasExperience && !hasExperienceDates) missingFields.push('experienceDates');
+
+  const notes =
+    `Deterministic scoring: required=${matchedRequired.length}/${required.length}, ` +
+    `nice=${matchedNice.length}/${niceToHave.length}, ` +
+    `experienceYears=${actualYears.toFixed(1)}${minYears ? ` (required ${minYears})` : ''}. ` +
+    `Weights: fit 75%, completeness 25%.`;
+
+  return {
+    score,
+    fitScore,
+    completenessScore,
+    matchedSkills: matchedRequired,
+    missingSkills: missingRequired,
+    missingFields,
+    notes,
+    matchedNiceToHave: matchedNice,
+    missingNiceToHave: missingNice,
+    experienceYears: Math.round(actualYears * 10) / 10,
+  };
+}
+
+function normalizeGeneratedResumeContent(content: ResumeContent): ResumeContent {
+  const normalizeStart = (start: unknown, end: unknown): string | undefined => {
+    const s = normalizeDateText(start);
+    if (!s) return undefined;
+    if (s.includes(' - ') && normalizeDateText(end)) {
+      return s.split(' - ')[0]?.trim() || s;
+    }
+    return s;
+  };
+
+  const normalizeEnd = (end: unknown): string | undefined => {
+    const e = normalizeDateText(end);
+    return e || undefined;
+  };
+
+  const experience = Array.isArray(content.experience)
+    ? content.experience.map((row) => ({
+        ...row,
+        ...(normalizeStart(row?.startDate, row?.endDate) ? { startDate: normalizeStart(row?.startDate, row?.endDate) } : {}),
+        ...(normalizeEnd(row?.endDate) ? { endDate: normalizeEnd(row?.endDate) } : {}),
+      }))
+    : [];
+
+  const education = Array.isArray(content.education)
+    ? content.education.map((row) => ({
+        ...row,
+        ...(normalizeDateText(row?.startDate) ? { startDate: normalizeDateText(row?.startDate) as string } : {}),
+        ...(normalizeDateText(row?.endDate) ? { endDate: normalizeDateText(row?.endDate) as string } : {}),
+      }))
+    : undefined;
+
+  return {
+    ...content,
+    skills: uniqStrings(asStringArray(content.skills)),
+    experience,
+    ...(education ? { education } : {}),
+  };
 }
 
 export async function processCandidate(candidateId: number): Promise<void> {
@@ -115,7 +518,7 @@ export async function processCandidate(candidateId: number): Promise<void> {
     const cvForModel = Number.isFinite(maxCvChars) && maxCvChars > 1000 ? truncateForModel(cvText, maxCvChars) : cvText;
 
     const t1 = Date.now();
-    const parsed = parseModelJson<Record<string, unknown>>(
+    const parsedRaw = parseModelJson<Record<string, unknown>>(
       await ollamaChat({
         system: PARSER_SYSTEM_PROMPT,
         user: cvForModel,
@@ -126,45 +529,20 @@ export async function processCandidate(candidateId: number): Promise<void> {
     );
     log('info', `candidate ${candidateId} parsed CV in ${Date.now() - t1}ms`);
 
-    const requirements = candidate.jobPosting?.requirements ?? {};
-    const requirementsObj = (requirements && typeof requirements === 'object' ? requirements : {}) as any;
-    const skillsRequired = Array.isArray(requirementsObj.skillsRequired)
-      ? requirementsObj.skillsRequired.filter((s: any) => typeof s === 'string')
-      : [];
-    const skillsNiceToHave = Array.isArray(requirementsObj.skillsNiceToHave)
-      ? requirementsObj.skillsNiceToHave.filter((s: any) => typeof s === 'string')
-      : [];
-    const extractedSkills = Array.isArray((parsed as any)?.skills) ? (parsed as any).skills.filter((s: any) => typeof s === 'string') : [];
-
-    const evaluationInput =
-      `JobPosting requirements (JSON):\n${JSON.stringify(requirements)}\n\n` +
-      `Requirements skillsRequired: ${JSON.stringify(skillsRequired)}\n` +
-      `Requirements skillsNiceToHave: ${JSON.stringify(skillsNiceToHave)}\n` +
-      `Candidate extracted skills: ${JSON.stringify(extractedSkills)}\n\n` +
-      `Candidate extracted data (JSON):\n${JSON.stringify(parsed)}`;
+    const parsed = normalizeParsedData(parsedRaw);
 
     const t2 = Date.now();
-    const evaluation = parseModelJson<Record<string, unknown>>(
-      await ollamaChat({
-        system: EVALUATOR_SYSTEM_PROMPT,
-        user: evaluationInput,
-        format: 'json',
-        timeoutMs: Number(process.env.CANDIDATE_AI_EVAL_TIMEOUT_MS ?? 90_000),
-        ollamaOptions: { num_predict: Number(process.env.OLLAMA_NUM_PREDICT_EVAL ?? 700) },
-      })
-    );
-    log('info', `candidate ${candidateId} evaluated in ${Date.now() - t2}ms`);
-
-    const score = clampScore((evaluation as any).score);
+    const evaluation = deterministicEvaluate(candidate.jobPosting?.requirements ?? {}, parsed);
+    log('info', `candidate ${candidateId} evaluated deterministically in ${Date.now() - t2}ms`);
 
     const evalCompact = {
-      score: (evaluation as any).score,
-      fitScore: (evaluation as any).fitScore,
-      completenessScore: (evaluation as any).completenessScore,
-      matchedSkills: (evaluation as any).matchedSkills,
-      missingSkills: (evaluation as any).missingSkills,
-      missingFields: (evaluation as any).missingFields,
-      notes: (evaluation as any).notes,
+      score: evaluation.score,
+      fitScore: evaluation.fitScore,
+      completenessScore: evaluation.completenessScore,
+      matchedSkills: evaluation.matchedSkills,
+      missingSkills: evaluation.missingSkills,
+      missingFields: evaluation.missingFields,
+      notes: evaluation.notes,
     };
 
     const generatorInput =
@@ -173,7 +551,7 @@ export async function processCandidate(candidateId: number): Promise<void> {
       'Generate strong but truthful bullet highlights. If some fields are missing, omit the section or use a short placeholder like "(Information not provided)".';
 
     const t3 = Date.now();
-    const resumeContent = parseModelJson<ResumeContent>(
+    const resumeContentRaw = parseModelJson<ResumeContent>(
       await ollamaChat({
         system: GENERATOR_SYSTEM_PROMPT,
         user: generatorInput,
@@ -182,6 +560,7 @@ export async function processCandidate(candidateId: number): Promise<void> {
         ollamaOptions: { num_predict: Number(process.env.OLLAMA_NUM_PREDICT_GENERATE ?? 1400) },
       })
     );
+    const resumeContent = normalizeGeneratedResumeContent(resumeContentRaw);
     log('info', `candidate ${candidateId} generated resume content in ${Date.now() - t3}ms`);
 
     const markdown = renderCvMarkdownFromTemplate(templateKey, resumeContent);
@@ -194,7 +573,7 @@ export async function processCandidate(candidateId: number): Promise<void> {
       data: {
         status: 'processed',
         extractedData: { ...parsed, evaluation, generatedResumeContent: resumeContent, cvTemplateKeyUsed: templateKey },
-        ...(score !== null ? { score } : {}),
+        ...(evaluation.score !== null ? { score: evaluation.score } : {}),
         standardizedCvMarkdown: markdown,
         ...(!candidate.fullName && derivedFullName ? { fullName: derivedFullName } : {}),
         ...(!candidate.email && derivedEmail ? { email: derivedEmail } : {}),

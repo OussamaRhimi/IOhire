@@ -2,9 +2,12 @@
   <app-topbar />
 
   <main class="page">
-    <section class="container">
-      <div class="card">
-        <h1>HR login</h1>
+    <section class="container portal-page portal-login-page">
+      <div class="card portal-hero portal-login-card">
+        <div class="portal-hero__title">
+          <span class="portal-hero__icon"><lucide-icon [img]="iconShield" [size]="16" /></span>
+          <h1>HR login</h1>
+        </div>
         <p class="muted">Sign in to access the HR dashboard.</p>
 
         @if (error()) {
@@ -14,7 +17,10 @@
         <form class="form" [formGroup]="form" (ngSubmit)="save()">
           <label class="field">
             <span class="field__label">Email</span>
-            <input class="input" formControlName="email" type="email" placeholder="hr@company.com" />
+            <div class="portal-input-wrap">
+              <span class="portal-input-icon"><lucide-icon [img]="iconMail" [size]="14" /></span>
+              <input class="input" formControlName="email" type="email" placeholder="hr@company.com" />
+            </div>
             @if (form.controls.email.touched && form.controls.email.invalid) {
               <div class="field__hint field__hint--error">Valid email is required.</div>
             }
@@ -22,7 +28,10 @@
 
           <label class="field">
             <span class="field__label">Password</span>
-            <input class="input" formControlName="password" type="password" placeholder="••••••••" />
+            <div class="portal-input-wrap">
+              <span class="portal-input-icon"><lucide-icon [img]="iconLock" [size]="14" /></span>
+              <input class="input" formControlName="password" type="password" placeholder="........" />
+            </div>
             @if (form.controls.password.touched && form.controls.password.invalid) {
               <div class="field__hint field__hint--error">Password is required.</div>
             }
@@ -30,7 +39,8 @@
 
           <div class="actions">
             <button class="btn btn--primary" type="submit" [disabled]="saving()">
-              @if (saving()) { Savingâ€¦ } @else { Continue }
+              <lucide-icon [img]="iconLogin" [size]="14" />
+              @if (saving()) { Saving... } @else { Continue }
             </button>
           </div>
         </form>
