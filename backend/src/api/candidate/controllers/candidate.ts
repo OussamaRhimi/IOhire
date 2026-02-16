@@ -62,6 +62,12 @@ function toStringArray(value: unknown): string[] {
   return value.map((v) => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
 }
 
+function resolveTemplateKey(candidateTemplateKey: unknown, requestedTemplateKey: unknown) {
+  if (isCvTemplateKey(requestedTemplateKey)) return requestedTemplateKey;
+  if (isCvTemplateKey(candidateTemplateKey)) return candidateTemplateKey;
+  return 'standard';
+}
+
 export default factories.createCoreController('api::candidate.candidate', ({ strapi }) => ({
   async hrListCvTemplates(ctx) {
     ctx.body = { templates: listCvTemplates() };
@@ -335,8 +341,7 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
     const contact = (candidate.extractedData?.contact ?? {}) as any;
     const fullName = toStringOrNull(candidate.fullName) ?? toStringOrNull(contact?.fullName) ?? null;
 
-    const templateKeyRaw = typeof candidate.cvTemplateKey === 'string' ? candidate.cvTemplateKey : null;
-    const templateKey = isCvTemplateKey(templateKeyRaw) ? templateKeyRaw : 'standard';
+    const templateKey = resolveTemplateKey(candidate.cvTemplateKey, ctx.query?.templateKey);
     const generated = (candidate.extractedData?.generatedResumeContent ?? null) as ResumeContent | null;
 
     let pdf: Buffer | null = null;
@@ -468,8 +473,7 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
     const contact = (candidate.extractedData?.contact ?? {}) as any;
     const fullName = toStringOrNull(candidate.fullName) ?? toStringOrNull(contact?.fullName) ?? null;
 
-    const templateKeyRaw = typeof candidate.cvTemplateKey === 'string' ? candidate.cvTemplateKey : null;
-    const templateKey = isCvTemplateKey(templateKeyRaw) ? templateKeyRaw : 'standard';
+    const templateKey = resolveTemplateKey(candidate.cvTemplateKey, ctx.query?.templateKey);
     const generated = (candidate.extractedData?.generatedResumeContent ?? null) as ResumeContent | null;
 
     let pdf: Buffer | null = null;

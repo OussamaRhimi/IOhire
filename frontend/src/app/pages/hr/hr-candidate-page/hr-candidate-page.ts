@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { formatDateTime } from '../../../core/format/date';
 import { toErrorMessage } from '../../../core/http/http-error';
 import { StrapiApi } from '../../../core/strapi/strapi.api';
+import { getHrDefaultCvTemplateKey } from '../../../core/strapi/cv-template.storage';
 import { CvTemplateMeta, HrCandidateDetail } from '../../../core/strapi/strapi.types';
 
 type TabKey = 'overview' | 'skills' | 'experience' | 'pdf';
@@ -105,7 +106,7 @@ export class HrCandidatePage {
   readonly candidate = signal<HrCandidateDetail | null>(null);
   readonly tab = signal<TabKey>('overview');
   readonly templates = signal<CvTemplateMeta[]>([]);
-  readonly selectedTemplateKey = signal<string>('standard');
+  readonly selectedTemplateKey = signal<string>(getHrDefaultCvTemplateKey() ?? 'standard');
 
   readonly id = computed(() => {
     const raw = this.route.snapshot.paramMap.get('id') ?? '';
@@ -277,7 +278,9 @@ export class HrCandidatePage {
   readonly standardizedPdfUrl = computed((): SafeResourceUrl | null => {
     const id = this.id();
     if (!id) return null;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(`/api/hr/candidates/${id}/standardized-cv.pdf`);
+    const templateKey = this.selectedTemplateKey();
+    const query = templateKey ? `?templateKey=${encodeURIComponent(templateKey)}` : '';
+    return this.sanitizer.bypassSecurityTrustResourceUrl(`/api/hr/candidates/${id}/standardized-cv.pdf${query}`);
   });
 
   readonly canReprocess = computed(() => {
@@ -310,6 +313,8 @@ export class HrCandidatePage {
       // If backend is older and doesn't return cvTemplateKey, keep current selection.
       if (c && typeof (c as any).cvTemplateKey === 'string' && (c as any).cvTemplateKey.trim()) {
         this.selectedTemplateKey.set((c as any).cvTemplateKey.trim());
+      } else {
+        this.selectedTemplateKey.set(getHrDefaultCvTemplateKey() ?? 'standard');
       }
     } catch (e) {
       this.error.set(toErrorMessage(e));
@@ -340,7 +345,9 @@ export class HrCandidatePage {
   openStandardizedPdf() {
     const id = this.id();
     if (!id) return;
-    window.open(`/api/hr/candidates/${id}/standardized-cv.pdf`, '_blank', 'noopener');
+    const templateKey = this.selectedTemplateKey();
+    const query = templateKey ? `?templateKey=${encodeURIComponent(templateKey)}` : '';
+    window.open(`/api/hr/candidates/${id}/standardized-cv.pdf${query}`, '_blank', 'noopener');
   }
 
   async applyTemplateKey(nextKey: string) {

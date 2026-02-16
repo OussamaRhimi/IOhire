@@ -3,7 +3,7 @@
     <div class="header-row">
       <div>
         <h1>CV templates</h1>
-        <p class="muted">Preview available templates. Pick a template per candidate from the Candidate page.</p>
+        <p class="muted">Select a default CV template and preview available layouts.</p>
       </div>
       <div class="actions">
         <button class="btn btn--ghost" type="button" (click)="refresh()" [disabled]="loading()">Refresh</button>
@@ -24,7 +24,7 @@
         <div class="grid2" style="margin-top: 12px">
           <div class="card">
             <div class="strong">Templates</div>
-            <div class="muted small" style="margin-top: 8px">Click a template to preview it.</div>
+            <div class="muted small" style="margin-top: 8px">Click a template to set it as default and preview it.</div>
 
             <div style="margin-top: 12px; display: grid; gap: 10px">
               @for (t of templates(); track t.key) {
@@ -38,7 +38,12 @@
                   <div style="display: grid; gap: 4px">
                     <div class="strong">{{ t.name }}</div>
                     <div class="muted small">{{ t.description }}</div>
-                    <div class="muted small">Key: <span class="badge">{{ t.key }}</span></div>
+                    <div class="muted small">
+                      Key: <span class="badge">{{ t.key }}</span>
+                      @if (isDefaultTemplate(t.key)) {
+                        <span class="badge">Default</span>
+                      }
+                    </div>
                   </div>
                 </button>
               }
@@ -47,6 +52,9 @@
             @if (selectedTemplate()) {
               <div style="margin-top: 12px">
                 <div class="muted small">Key: <span class="badge">{{ selectedTemplate()!.key }}</span></div>
+                @if (isDefaultTemplate(selectedTemplate()!.key)) {
+                  <div class="muted small" style="margin-top: 8px"><span class="badge">Default template</span></div>
+                }
                 <div class="muted small" style="margin-top: 8px">{{ selectedTemplate()!.description }}</div>
               </div>
             }
@@ -54,9 +62,9 @@
 
           <div class="card">
             <div class="strong">Preview</div>
-            @if (sampleHtml()) {
+            @if (samplePreviewUrl()) {
               <iframe
-                [attr.srcdoc]="sampleHtml()!"
+                [src]="samplePreviewUrl()!"
                 title="Template preview"
                 style="width: 100%; height: 78vh; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; background: white"
               ></iframe>

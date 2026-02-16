@@ -1,4 +1,4 @@
-import { extractLikelyJsonObject, safeJsonParse } from './json';
+import { parseJsonWithRecovery } from './json';
 import { ollamaChat } from './ollama';
 import { extractTextFromResume } from './resume-text';
 import { isCvTemplateKey, renderCvMarkdownFromTemplate, type CvTemplateKey, type ResumeContent } from './cv-templates';
@@ -26,6 +26,10 @@ const GENERATOR_SYSTEM_PROMPT =
   '{ summary?: string, skills: string[], experience: Array<{ company?: string, title?: string, startDate?: string, endDate?: string, highlights?: string[] }>, ' +
   'education?: Array<{ school?: string, degree?: string, startDate?: string, endDate?: string }>, certifications?: string[], projects?: Array<{ name?: string, description?: string, links?: string[] }>, ' +
   'languages?: string[], qualities?: string[], interests?: string[] }';
+
+const JSON_REPAIR_SYSTEM_PROMPT =
+  'You repair malformed JSON. Return ONLY valid JSON and preserve all original data fields/values as much as possible. ' +
+  'Do not add markdown, explanations, comments, or code fences.';
 
 const MONTH_MAP: Array<[RegExp, string]> = [
   [/\bjanvier\b/gi, 'January'],
@@ -62,17 +66,11 @@ function truncateForModel(text: string, maxChars: number): string {
   return `${head}\n\n[...truncated...]\n\n${tail}`;
 }
 
-function parseModelJson<T = unknown>(raw: string): T {
-  const direct = safeJsonParse<T>(raw);
-  if (direct.ok) return direct.value;
-
-  const extracted = extractLikelyJsonObject(raw);
-  if (extracted) {
-    const second = safeJsonParse<T>(extracted);
-    if (second.ok) return second.value;
-  }
-
-  throw (direct as { ok: false; error: Error }).error;
+function parseModelJson<T = unknown>(raw: string): { value: T; recovered: boolean } {
+  const parsed = parseJsonWithRecovery<T>(raw);
+  if (parsed.ok) return { value: parsed.value, recovered: parsed.recovered };
+  if ('error' in parsed) throw parsed.error;
+  throw new Error('Unexpected parse state');
 }
 
 function clampScore(value: unknown): number | null {
@@ -479,6 +477,71 @@ function normalizeGeneratedResumeContent(content: ResumeContent): ResumeContent 
   };
 }
 
+function resumeContentFromParsedData(parsed: Record<string, unknown>): ResumeContent {
+  const experienceRaw = Array.isArray(parsed.experience) ? parsed.experience : [];
+  const experience = experienceRaw
+    .map((row: any) => {
+      const company = asTrimmedString(row?.company);
+      const title = asTrimmedString(row?.title);
+      const startDate = normalizeDateText(row?.startDate);
+      const endDate = normalizeDateText(row?.endDate);
+      const highlights = uniqStrings(asStringArray(row?.highlights));
+      if (!company && !title && !startDate && !endDate && highlights.length === 0) return null;
+      return {
+        ...(company ? { company } : {}),
+        ...(title ? { title } : {}),
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+        ...(highlights.length ? { highlights } : {}),
+      };
+    })
+    .filter(Boolean) as NonNullable<ResumeContent['experience']>;
+
+  const educationRaw = Array.isArray(parsed.education) ? parsed.education : [];
+  const education = educationRaw
+    .map((row: any) => {
+      const school = asTrimmedString(row?.school);
+      const degree = asTrimmedString(row?.degree);
+      const startDate = normalizeDateText(row?.startDate);
+      const endDate = normalizeDateText(row?.endDate);
+      if (!school && !degree && !startDate && !endDate) return null;
+      return {
+        ...(school ? { school } : {}),
+        ...(degree ? { degree } : {}),
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+      };
+    })
+    .filter(Boolean) as NonNullable<ResumeContent['education']>;
+
+  const projectsRaw = Array.isArray(parsed.projects) ? parsed.projects : [];
+  const projects = projectsRaw
+    .map((row: any) => {
+      const name = asTrimmedString(row?.name);
+      const description = asTrimmedString(row?.description);
+      const links = uniqStrings(asStringArray(row?.links));
+      if (!name && !description && links.length === 0) return null;
+      return {
+        ...(name ? { name } : {}),
+        ...(description ? { description } : {}),
+        ...(links.length ? { links } : {}),
+      };
+    })
+    .filter(Boolean) as NonNullable<ResumeContent['projects']>;
+
+  return {
+    ...(asTrimmedString(parsed.summary) ? { summary: asTrimmedString(parsed.summary) as string } : {}),
+    skills: uniqStrings(asStringArray(parsed.skills)),
+    experience,
+    ...(education.length ? { education } : {}),
+    certifications: uniqStrings(asStringArray(parsed.certifications)),
+    ...(projects.length ? { projects } : {}),
+    languages: uniqStrings(asStringArray(parsed.languages)),
+    qualities: uniqStrings(asStringArray(parsed.qualities)),
+    interests: uniqStrings(asStringArray(parsed.interests)),
+  };
+}
+
 export async function processCandidate(candidateId: number): Promise<void> {
   const strapi = (globalThis as any).strapi;
   if (!strapi) throw new Error('Strapi is not available on globalThis.');
@@ -518,7 +581,7 @@ export async function processCandidate(candidateId: number): Promise<void> {
     const cvForModel = Number.isFinite(maxCvChars) && maxCvChars > 1000 ? truncateForModel(cvText, maxCvChars) : cvText;
 
     const t1 = Date.now();
-    const parsedRaw = parseModelJson<Record<string, unknown>>(
+    const parsedModel = parseModelJson<Record<string, unknown>>(
       await ollamaChat({
         system: PARSER_SYSTEM_PROMPT,
         user: cvForModel,
@@ -527,9 +590,12 @@ export async function processCandidate(candidateId: number): Promise<void> {
         ollamaOptions: { num_predict: Number(process.env.OLLAMA_NUM_PREDICT_PARSE ?? 900) },
       })
     );
+    if (parsedModel.recovered) {
+      log('warn', `candidate ${candidateId} parser output required JSON recovery`);
+    }
     log('info', `candidate ${candidateId} parsed CV in ${Date.now() - t1}ms`);
 
-    const parsed = normalizeParsedData(parsedRaw);
+    const parsed = normalizeParsedData(parsedModel.value);
 
     const t2 = Date.now();
     const evaluation = deterministicEvaluate(candidate.jobPosting?.requirements ?? {}, parsed);
@@ -551,16 +617,44 @@ export async function processCandidate(candidateId: number): Promise<void> {
       'Generate strong but truthful bullet highlights. If some fields are missing, omit the section or use a short placeholder like "(Information not provided)".';
 
     const t3 = Date.now();
-    const resumeContentRaw = parseModelJson<ResumeContent>(
-      await ollamaChat({
-        system: GENERATOR_SYSTEM_PROMPT,
-        user: generatorInput,
-        format: 'json',
-        timeoutMs: Number(process.env.CANDIDATE_AI_GENERATE_TIMEOUT_MS ?? 180_000),
-        ollamaOptions: { num_predict: Number(process.env.OLLAMA_NUM_PREDICT_GENERATE ?? 1400) },
-      })
-    );
-    const resumeContent = normalizeGeneratedResumeContent(resumeContentRaw);
+    const generatedRaw = await ollamaChat({
+      system: GENERATOR_SYSTEM_PROMPT,
+      user: generatorInput,
+      format: 'json',
+      timeoutMs: Number(process.env.CANDIDATE_AI_GENERATE_TIMEOUT_MS ?? 180_000),
+      ollamaOptions: { num_predict: Number(process.env.OLLAMA_NUM_PREDICT_GENERATE ?? 1400) },
+    });
+
+    let resumeContentModel: { value: ResumeContent; recovered: boolean } | null = null;
+    try {
+      resumeContentModel = parseModelJson<ResumeContent>(generatedRaw);
+    } catch (firstError: any) {
+      log('warn', `candidate ${candidateId} generator parse failed, attempting repair pass: ${firstError?.message ?? firstError}`);
+      try {
+        const repairedRaw = await ollamaChat({
+          system: JSON_REPAIR_SYSTEM_PROMPT,
+          user:
+            'Repair this malformed JSON into valid JSON while preserving content exactly where possible.\n\n' +
+            generatedRaw,
+          format: 'json',
+          timeoutMs: Number(process.env.CANDIDATE_AI_GENERATE_TIMEOUT_MS ?? 180_000),
+          ollamaOptions: { num_predict: Number(process.env.OLLAMA_NUM_PREDICT_GENERATE ?? 1400) },
+        });
+        resumeContentModel = parseModelJson<ResumeContent>(repairedRaw);
+        log('warn', `candidate ${candidateId} generator parse succeeded after repair pass`);
+      } catch (secondError: any) {
+        log('warn', `candidate ${candidateId} generator repair failed, using extracted-data fallback: ${secondError?.message ?? secondError}`);
+        resumeContentModel = { value: resumeContentFromParsedData(parsed), recovered: true };
+      }
+    }
+
+    if (!resumeContentModel) {
+      throw new Error('Resume generation returned no content.');
+    }
+    if (resumeContentModel.recovered) {
+      log('warn', `candidate ${candidateId} generator output required JSON recovery`);
+    }
+    const resumeContent = normalizeGeneratedResumeContent(resumeContentModel.value);
     log('info', `candidate ${candidateId} generated resume content in ${Date.now() - t3}ms`);
 
     const markdown = renderCvMarkdownFromTemplate(templateKey, resumeContent);
