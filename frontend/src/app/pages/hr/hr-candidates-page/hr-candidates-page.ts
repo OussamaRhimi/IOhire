@@ -10,6 +10,12 @@ import { CandidateStatus, HrCandidate } from '../../../core/strapi/strapi.types'
 
 type SearchColumnKey = 'fullName' | 'email' | 'jobTitle' | 'status' | 'score' | 'hrNotes';
 type SearchScope = SearchColumnKey | 'all';
+type ScoreFilter = '' | `${'gt' | 'lt'}:${number}`;
+type OpenJobOption = {
+  id: number;
+  title: string;
+};
+
 const DEFAULT_CANDIDATE_STATUSES: CandidateStatus[] = [
   'new',
   'processing',
@@ -20,6 +26,23 @@ const DEFAULT_CANDIDATE_STATUSES: CandidateStatus[] = [
   'hired',
   'error',
 ];
+const SCORE_FILTER_OPTIONS: Array<{ value: ScoreFilter; label: string }> = [
+  { value: '', label: 'All scores' },
+  { value: 'lt:30', label: 'Below 30' },
+  { value: 'lt:40', label: 'Below 40' },
+  { value: 'lt:50', label: 'Below 50' },
+  { value: 'lt:60', label: 'Below 60' },
+  { value: 'lt:70', label: 'Below 70' },
+  { value: 'lt:80', label: 'Below 80' },
+  { value: 'lt:90', label: 'Below 90' },
+  { value: 'gt:30', label: 'Above 30' },
+  { value: 'gt:40', label: 'Above 40' },
+  { value: 'gt:50', label: 'Above 50' },
+  { value: 'gt:60', label: 'Above 60' },
+  { value: 'gt:70', label: 'Above 70' },
+  { value: 'gt:80', label: 'Above 80' },
+  { value: 'gt:90', label: 'Above 90' },
+];
 
 function normalizeSearchText(value: unknown): string {
   const s = String(value ?? '')
@@ -27,6 +50,17 @@ function normalizeSearchText(value: unknown): string {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
   return s;
+}
+
+function matchesScoreFilter(score: number | null, scoreFilter: ScoreFilter): boolean {
+  if (!scoreFilter) return true;
+  if (typeof score !== 'number' || !Number.isFinite(score)) return false;
+  const match = /^(gt|lt):(\d{1,3})$/.exec(scoreFilter);
+  if (!match) return true;
+  const operator = match[1];
+  const threshold = Number(match[2]);
+  if (!Number.isFinite(threshold)) return true;
+  return operator === 'gt' ? score > threshold : score < threshold;
 }
 
 @Component({
@@ -45,12 +79,18 @@ export class HrCandidatesPage {
   readonly error = signal<string | null>(null);
   readonly candidates = signal<HrCandidate[]>([]);
   readonly statuses = signal<CandidateStatus[]>([]);
+  readonly openJobs = signal<OpenJobOption[]>([]);
+  readonly selectedCandidateIds = signal<number[]>([]);
+  readonly bulkStatus = signal<'' | CandidateStatus>('');
   readonly statusOptions = computed(() => (this.statuses().length > 0 ? this.statuses() : DEFAULT_CANDIDATE_STATUSES));
+  readonly scoreOptions = SCORE_FILTER_OPTIONS;
 
   readonly filterForm = this.fb.nonNullable.group({
     q: [''],
     status: ['' as '' | CandidateStatus],
     searchScope: this.fb.nonNullable.control<SearchScope>('all'),
+    scoreFilter: this.fb.nonNullable.control<ScoreFilter>(''),
+    jobId: this.fb.nonNullable.control(''),
   });
   readonly searchColumns = [
     { key: 'all' as const, label: 'All columns' },
@@ -72,9 +112,17 @@ export class HrCandidatesPage {
     const qTokens = q.split(/\s+/g).filter(Boolean);
     const status = filter.status ?? '';
     const searchScope: SearchScope = filter.searchScope ?? 'all';
+    const scoreFilter: ScoreFilter = filter.scoreFilter ?? '';
+    const selectedJobId = filter.jobId ?? '';
+    const selectedJobIdNumber = Number(selectedJobId);
 
     return this.candidates().filter((c) => {
       if (status && c.status !== status) return false;
+      if (!matchesScoreFilter(c.score, scoreFilter)) return false;
+      if (selectedJobId) {
+        if (!Number.isFinite(selectedJobIdNumber)) return false;
+        if (c.jobId !== selectedJobIdNumber) return false;
+      }
       if (qTokens.length === 0) return true;
 
       const include = (key: SearchColumnKey) => searchScope === 'all' || searchScope === key;
@@ -88,6 +136,20 @@ export class HrCandidatesPage {
       const hay = normalizeSearchText(parts.join(' '));
       return qTokens.every((token) => hay.includes(token));
     });
+  });
+  readonly selectedCount = computed(() => this.selectedCandidateIds().length);
+  readonly allFilteredSelected = computed(() => {
+    const filtered = this.filtered();
+    if (filtered.length === 0) return false;
+    const selected = new Set(this.selectedCandidateIds());
+    return filtered.every((c) => selected.has(c.id));
+  });
+  readonly partlyFilteredSelected = computed(() => {
+    const filtered = this.filtered();
+    if (filtered.length === 0) return false;
+    const selected = new Set(this.selectedCandidateIds());
+    const selectedCount = filtered.filter((c) => selected.has(c.id)).length;
+    return selectedCount > 0 && selectedCount < filtered.length;
   });
 
   formatDateTime = formatDateTime;
@@ -127,8 +189,7 @@ export class HrCandidatesPage {
   }
 
   async ngOnInit() {
-    await this.loadMeta();
-    await this.refresh();
+    await Promise.all([this.loadMeta(), this.refresh()]);
   }
 
   async loadMeta() {
@@ -141,11 +202,30 @@ export class HrCandidatesPage {
     }
   }
 
+  async loadOpenJobs() {
+    try {
+      const jobs = await this.api.listOpenJobPostings();
+      const openJobs = jobs
+        .map((job) => ({
+          id: typeof job?.id === 'number' ? job.id : Number(job?.id),
+          title: typeof job?.title === 'string' ? job.title.trim() : '',
+        }))
+        .filter((job) => Number.isFinite(job.id) && !!job.title)
+        .sort((a, b) => a.title.localeCompare(b.title));
+      this.openJobs.set(openJobs);
+    } catch {
+      this.openJobs.set([]);
+    }
+  }
+
   async refresh() {
     try {
       this.loading.set(true);
       this.error.set(null);
-      this.candidates.set(await this.api.listHrCandidates());
+      const [candidates] = await Promise.all([this.api.listHrCandidates(), this.loadOpenJobs()]);
+      this.candidates.set(candidates);
+      const currentIds = new Set(candidates.map((c) => c.id));
+      this.selectedCandidateIds.update((ids) => ids.filter((id) => currentIds.has(id)));
     } catch (e) {
       this.error.set(toErrorMessage(e));
     } finally {
@@ -219,11 +299,76 @@ export class HrCandidatesPage {
     this.filterForm.controls.searchScope.setValue(scope);
   }
 
+  setBulkStatus(value: string) {
+    const next = typeof value === 'string' ? value.trim() : '';
+    if (!next) {
+      this.bulkStatus.set('');
+      return;
+    }
+    if (!this.statusOptions().includes(next as CandidateStatus)) return;
+    this.bulkStatus.set(next as CandidateStatus);
+  }
+
+  isSelected(candidateId: number): boolean {
+    return this.selectedCandidateIds().includes(candidateId);
+  }
+
+  toggleCandidateSelection(candidateId: number, checked: boolean) {
+    this.selectedCandidateIds.update((ids) => {
+      const set = new Set(ids);
+      if (checked) set.add(candidateId);
+      else set.delete(candidateId);
+      return Array.from(set);
+    });
+  }
+
+  selectAllFiltered() {
+    const filteredIds = this.filtered().map((c) => c.id);
+    this.selectedCandidateIds.update((ids) => Array.from(new Set([...ids, ...filteredIds])));
+  }
+
+  clearFilteredSelection() {
+    const filteredSet = new Set(this.filtered().map((c) => c.id));
+    this.selectedCandidateIds.update((ids) => ids.filter((id) => !filteredSet.has(id)));
+  }
+
+  toggleSelectAllFiltered(checked: boolean) {
+    if (checked) this.selectAllFiltered();
+    else this.clearFilteredSelection();
+  }
+
+  clearSelection() {
+    this.selectedCandidateIds.set([]);
+  }
+
+  async applyBulkStatus() {
+    const status = this.bulkStatus();
+    const ids = this.selectedCandidateIds();
+    if (!status || ids.length === 0) return;
+    if (!this.statusOptions().includes(status)) return;
+    if (!confirm(`Apply status "${this.statusLabel(status)}" to ${ids.length} selected candidates?`)) return;
+
+    try {
+      this.saving.set(true);
+      this.error.set(null);
+      await this.api.bulkUpdateHrCandidatesStatus(ids, status);
+      this.bulkStatus.set('');
+      this.clearSelection();
+      await this.refresh();
+    } catch (e) {
+      this.error.set(toErrorMessage(e));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
   resetFilters() {
     this.filterForm.reset({
       q: '',
       status: '',
       searchScope: 'all',
+      scoreFilter: '',
+      jobId: '',
     });
   }
 

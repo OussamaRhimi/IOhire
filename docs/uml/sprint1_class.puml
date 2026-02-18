@@ -1,60 +1,93 @@
 @startuml
-title Sprint 1 - Class Diagram (Foundation, Auth, Job Management)
-skinparam classAttributeIconSize 0
+title Sprint 1 - Class Diagram (Academic Domain Model)
 
-class HrUser {
-  +id: int
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+left to right direction
+
+abstract class User {
+  +userId: int
+  +fullName: string
   +email: string
-  +passwordHash: string
-  +role: string
+  --
+  +authenticate(password: string): boolean
+  +logout(): void
 }
 
-enum JobStatus {
+class HRUser {
+  +email: string
+  +password: string
+  +role: string
+  --
+  +addSkill(name: string): Skill
+  +updateSkill(skillId: int, name: string): void
+  +deleteSkill(skillId: int): void
+  +searchSkills(query: string): Skill[*]
+  +addDepartment(name: string): Department
+  +updateDepartment(departmentId: int, name: string): void
+  +deleteDepartment(departmentId: int): void
+  +searchDepartments(query: string): Department[*]
+  +createJobPosting(data): JobPosting
+  +updateJobPosting(jobId: int, patch): JobPosting
+  +changeJobStatus(jobId: int, status: JobPostingStatus): void
+  +deleteJobPosting(jobId: int): void
+}
+
+User <|-- HRUser
+
+class JobPosting {
+  +jobId: int
+  +title: string
+  +description: text
+  +status: JobPostingStatus
+  +createdAt: datetime
+  +updatedAt: datetime
+  --
+  +openPosting(): void
+  +closePosting(): void
+  +updateDetails(title: string, description: text): void
+}
+
+class JobRequirement {
+  +skillsRequired: string[*]
+  +skillsNiceToHave: string[*]
+  +departments: string[*]
+  +minYearsExperience: int
+  +notes: string
+  --
+  +addRequiredSkill(skill: string): void
+  +removeRequiredSkill(skill: string): void
+  +addDepartment(department: string): void
+  +removeDepartment(department: string): void
+  +setMinYearsExperience(years: int): void
+}
+
+class Skill {
+  +skillId: int
+  +name: string
+  --
+  +rename(name: string): void
+}
+
+class Department {
+  +departmentId: int
+  +name: string
+  --
+  +rename(name: string): void
+}
+
+HRUser "1" -- "0..*" JobPosting : manages >
+JobPosting "1" *-- "1" JobRequirement : defines >
+JobRequirement "0..*" -- "0..*" Skill : uses >
+JobRequirement "0..*" -- "0..*" Department : uses >
+HRUser "1" -- "0..*" Skill : curates >
+HRUser "1" -- "0..*" Department : curates >
+
+enum JobPostingStatus {
   draft
   open
   closed
 }
 
-class JobPosting {
-  +id: int
-  +title: string
-  +description: text
-  +requirements: json
-  +status: JobStatus
-}
-
-class AuthController {
-  +login(identifier, password)
-}
-
-class AuthService {
-  +validateCredentials(identifier, password)
-  +issueJwt(user)
-}
-
-class JobPostingController {
-  +create(data)
-  +update(id, patch)
-  +delete(id)
-  +list()
-}
-
-class JobPostingService {
-  +create(data)
-  +update(id, patch)
-  +delete(id)
-  +setStatus(id, status)
-}
-
-class MetaController {
-  +getStatuses()
-}
-
-AuthController --> AuthService
-JobPostingController --> JobPostingService
-JobPostingService --> JobPosting
-AuthService --> HrUser
-MetaController --> JobPosting
-
 @enduml
-

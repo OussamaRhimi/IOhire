@@ -1,38 +1,50 @@
 @startuml
-title Sprint 4 - Use Case Diagram (Analytics, Operations, Deployment)
+title Sprint 4 - Use Case Diagram (Academic)
 left to right direction
 skinparam packageStyle rectangle
+skinparam shadowing false
 
-actor "Admin / HR Lead" as Admin
-actor "DevOps Engineer" as DevOps
-actor "Scheduler (Cron)" as Cron
+actor "HR User" as A_HR
+actor "AI Service (Ollama)" as A_AI
 
 rectangle "IOhire - Sprint 4" {
-  usecase "View Analytics Dashboard" as UC_Dashboard
-  usecase "Review KPIs\n(total jobs, candidates,\navg score, processing time)" as UC_KPI
-  usecase "Review Charts\n(status, score histogram,\nsubmissions over time)" as UC_Charts
-  usecase "Monitor AI Pipeline Health" as UC_Monitor
+  package "CandidateApplication Decision Support" {
+    usecase "UC41 - Filter CandidateApplications (Multi-criteria)" as UC41
+    usecase "UC42 - Filter by Score Threshold" as UC42
+    usecase "UC43 - Filter by Open JobPosting" as UC43
+    usecase "UC44 - Select Filtered CandidateApplications" as UC44
+    usecase "UC45 - Apply Bulk CandidateApplication Status" as UC45
+  }
 
-  usecase "Purge Expired Candidates" as UC_Retention
-  usecase "Mark Stuck Processing\nas Error" as UC_Watchdog
-  usecase "Process Pending Candidates\nin Batches" as UC_Worker
-
-  usecase "Deploy with Docker Compose" as UC_Deploy
-  usecase "Configure Environment\nVariables" as UC_Env
+  package "Analytics and AI Supervision" {
+    usecase "UC46 - View Analytics Dashboard" as UC46
+    usecase "UC47 - Review KPIs and Charts" as UC47
+    usecase "UC48 - Monitor AI Processing Health" as UC48
+    usecase "UC49 - Use AI-Derived Match Score in Decisions" as UC49
+  }
 }
 
-Admin --> UC_Dashboard
-Admin --> UC_Monitor
-UC_Dashboard ..> UC_KPI : <<include>>
-UC_Dashboard ..> UC_Charts : <<include>>
+A_HR --> UC41
+A_HR --> UC45
+A_HR --> UC46
+A_HR --> UC48
 
-Cron --> UC_Retention
-Cron --> UC_Watchdog
-Cron --> UC_Worker
+UC41 ..> UC42 : <<include>>
+UC41 ..> UC43 : <<include>>
+UC41 ..> UC44 : <<include>>
+UC41 ..> UC49 : <<include>>
+UC45 ..> UC44 : <<include>>
 
-DevOps --> UC_Deploy
-DevOps --> UC_Env
-UC_Deploy ..> UC_Env : <<include>>
+UC46 ..> UC47 : <<include>>
+UC48 ..> UC49 : <<include>>
+
+A_AI -left-> UC49
+A_AI -left-> UC48
+
+note right of UC45
+  Example policy:
+  for one JobPosting, reject low-score
+  CandidateApplications and hire top scorers.
+end note
 
 @enduml
-

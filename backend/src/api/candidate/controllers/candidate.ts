@@ -32,6 +32,21 @@ function coerceNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function toPositiveIntArrayUnique(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  const out: number[] = [];
+  const seen = new Set<number>();
+  for (const raw of value) {
+    const n = coerceNumber(raw);
+    if (!n || !Number.isFinite(n)) continue;
+    const id = Math.trunc(n);
+    if (id <= 0 || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
 function getSingleFile(files: any): any | null {
   if (!files) return null;
   if (Array.isArray(files)) return files[0] ?? null;
@@ -746,6 +761,48 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
     ctx.type = 'application/pdf';
     (ctx as any).attachment(`${safeFilename(fullName ?? `candidate-${id}`)}-standardized-cv.pdf`);
     ctx.body = pdf;
+  },
+
+  async hrBulkUpdateStatus(ctx) {
+    const body = ((ctx.request as any).body ?? {}) as Record<string, unknown>;
+    const ids = toPositiveIntArrayUnique(body.ids);
+    const status = typeof body.status === 'string' ? body.status.trim() : '';
+
+    if (!status) return ctx.badRequest('status is required.');
+    if (ids.length === 0) return ctx.badRequest('ids must contain at least one candidate id.');
+
+    const candidateContentType = strapi.contentType('api::candidate.candidate') as any;
+    const allowedStatuses = Array.isArray(candidateContentType?.attributes?.status?.enum)
+      ? (candidateContentType.attributes.status.enum as string[])
+      : [];
+    if (!allowedStatuses.includes(status)) return ctx.badRequest('Invalid status value.');
+
+    const existing = (await strapi.entityService.findMany('api::candidate.candidate', {
+      filters: { id: { $in: ids } } as any,
+      fields: ['id'] as any,
+      limit: ids.length,
+    })) as any[];
+
+    const existingIds = existing
+      .map((item) => (typeof item?.id === 'number' ? item.id : Number(item?.id)))
+      .filter((id) => Number.isFinite(id));
+
+    for (const id of existingIds) {
+      await strapi.entityService.update('api::candidate.candidate', id, {
+        data: { status } as any,
+      });
+    }
+
+    const updatedSet = new Set<number>(existingIds);
+    const notFoundIds = ids.filter((id) => !updatedSet.has(id));
+
+    ctx.body = {
+      ok: true,
+      status,
+      updatedCount: existingIds.length,
+      updatedIds: existingIds,
+      notFoundIds,
+    };
   },
 
   async hrReprocess(ctx) {

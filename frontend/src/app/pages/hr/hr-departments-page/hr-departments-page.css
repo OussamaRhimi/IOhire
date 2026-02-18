@@ -1,0 +1,62 @@
+.hr-taxonomy-page {
+  display: grid;
+  gap: 14px;
+}
+
+.hr-taxonomy-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hr-taxonomy-card {
+  display: grid;
+  gap: 12px;
+}
+
+.hr-taxonomy-create {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr auto;
+}
+
+.hr-taxonomy-list {
+  display: grid;
+  gap: 10px;
+}
+
+.hr-taxonomy-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--panel-2) 12%);
+}
+
+.hr-taxonomy-name {
+  font-weight: 700;
+}
+
+.hr-taxonomy-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  justify-content: center;
+  padding: 0;
+}
+
+.hr-taxonomy-icon-btn--danger {
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .hr-taxonomy-create {
+    grid-template-columns: 1fr;
+  }
+}
+

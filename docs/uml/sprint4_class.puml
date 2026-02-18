@@ -1,63 +1,105 @@
 @startuml
-title Sprint 4 - Class Diagram (Analytics, Operations, Deployment)
+title Sprint 4 - Class Diagram (Academic Domain Model)
+
 skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+left to right direction
 
-class AdminAnalyticsPage {
-  +refresh()
-  +renderCharts()
+class HRUser {
+  +userId: int
+  +fullName: string
+  +email: string
+  +password: string
+  +role: string
+  --
+  +filterCandidates(criteria: CandidateFilterCriteria): CandidateApplication[*]
+  +selectFilteredCandidates(criteria: CandidateFilterCriteria): CandidateApplication[*]
+  +applyBulkStatus(cmd: BulkStatusCommand): int
+  +viewAnalytics(): AnalyticsSnapshot
+  +monitorAIPipeline(): void
 }
 
-class AnalyticsService {
-  +computeKpis(candidates, jobs): KpiResult
-  +buildChartDatasets(candidates, jobs): ChartData
+class JobPosting {
+  +jobId: int
+  +title: string
+  +status: JobPostingStatus
+  --
+  +isOpen(): boolean
 }
 
-class MetaController {
-  +get()
+class CandidateApplication {
+  +applicationId: int
+  +jobId: int
+  +status: ApplicationStatus
+  +score: decimal
+  +createdAt: datetime
+  +updatedAt: datetime
+  --
+  +setStatus(status: ApplicationStatus): void
+  +setScore(score: decimal): void
 }
 
-class CandidateWorkerJob {
-  +processNewCandidates()
+class CandidateFilterCriteria {
+  +status: ApplicationStatus
+  +scoreOperator: string
+  +scoreThreshold: int
+  +openJobId: int
+  +searchScope: string
+  +searchText: string
+  --
+  +matches(application: CandidateApplication): boolean
 }
 
-class ProcessingWatchdogJob {
-  +markStuckAsError()
+class BulkStatusCommand {
+  +candidateIds: int[*]
+  +targetStatus: ApplicationStatus
+  --
+  +validate(): boolean
 }
 
-class CandidateRetentionJob {
-  +purgeExpiredCandidates()
+class AnalyticsSnapshot {
+  +totalJobPostings: int
+  +totalCandidateApplications: int
+  +averageScore: decimal
+  +averageProcessingTimeHours: decimal
+  +statusDistribution: json
+  +scoreHistogram: json
+  +submissionsOverTime: json
+  --
+  +buildFromData(apps: CandidateApplication[*], jobs: JobPosting[*]): void
 }
 
-class CandidateRepository {
-  +findNew(limit)
-  +findStuck(threshold)
-  +findExpired(now)
-  +updateStatus(id, status)
-  +delete(id)
+class AIProcessor <<AI>> {
+  +computeMatchScore(applicationId: int): decimal
+  +reprocessCandidate(applicationId: int): void
+  +markStuckAsError(applicationId: int): void
 }
 
-class UploadService {
-  +findOne(fileId)
-  +remove(file)
+HRUser "1" -- "0..*" CandidateApplication : reviews >
+JobPosting "1" <-- "0..*" CandidateApplication : targets >
+
+CandidateFilterCriteria ..> CandidateApplication : filters >
+BulkStatusCommand ..> CandidateApplication : updates status >
+AnalyticsSnapshot ..> CandidateApplication : aggregates >
+AnalyticsSnapshot ..> JobPosting : aggregates >
+AIProcessor ..> CandidateApplication : updates score/status >
+
+enum ApplicationStatus {
+  new
+  processing
+  processed
+  reviewing
+  shortlisted
+  rejected
+  hired
+  error
 }
 
-class ComposeDeploymentProfile {
-  +services: postgres, ollama, strapi
-  +volumes: postgres-data, ollama-data, strapi-uploads
+enum JobPostingStatus {
+  draft
+  open
+  closed
 }
-
-AdminAnalyticsPage --> AnalyticsService
-AdminAnalyticsPage --> MetaController
-AnalyticsService --> CandidateRepository
-
-CandidateWorkerJob --> CandidateRepository
-ProcessingWatchdogJob --> CandidateRepository
-CandidateRetentionJob --> CandidateRepository
-CandidateRetentionJob --> UploadService
-
-ComposeDeploymentProfile .. CandidateWorkerJob : runtime context
-ComposeDeploymentProfile .. ProcessingWatchdogJob : runtime context
-ComposeDeploymentProfile .. CandidateRetentionJob : runtime context
 
 @enduml
-

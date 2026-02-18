@@ -32,6 +32,12 @@ export default {
     },
     {
       method: 'POST',
+      path: '/hr/candidates/bulk-status',
+      handler: 'candidate.hrBulkUpdateStatus',
+      config: { auth: { scope: ['api::candidate.candidate.update'] } },
+    },
+    {
+      method: 'POST',
       path: '/hr/candidates/:id/reprocess',
       handler: 'candidate.hrReprocess',
       config: { auth: { scope: ['api::candidate.candidate.update'] } },

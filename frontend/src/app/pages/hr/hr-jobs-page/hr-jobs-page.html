@@ -31,10 +31,10 @@
               <h2 class="hr-job-card__title">{{ job.title || 'Untitled role' }}</h2>
               <div class="hr-job-meta">
                 @let meta = jobMeta(job);
-                <span>{{ meta.department }}</span>
-                <span>•</span>
+                <span>{{ meta.departments.join(', ') }}</span>
+                <span>&middot;</span>
                 <span>{{ meta.location }}</span>
-                <span>•</span>
+                <span>&middot;</span>
                 <span>{{ meta.employmentType }}</span>
               </div>
             </div>
@@ -114,8 +114,34 @@
 
         <div class="grid2">
           <label class="field">
-            <span class="field__label">Department</span>
-            <input class="input" formControlName="department" placeholder="e.g., Engineering" />
+            <span class="field__label">Departments</span>
+            <input
+              class="input"
+              type="search"
+              [value]="departmentQuery()"
+              (input)="setDepartmentQuery($any($event.target).value)"
+              (keydown.enter)="addFirstDepartmentMatch(); $event.preventDefault()"
+              placeholder="Type to search departments"
+            />
+            <div class="hr-job-suggest-list">
+              @for (name of filteredDepartmentOptions(); track name) {
+                <button class="hr-job-suggest hr-job-suggest--department" type="button" (click)="addDepartment(name)">
+                  {{ name }}
+                </button>
+              } @empty {
+                <span class="muted small">No matching department.</span>
+              }
+            </div>
+            <div class="hr-job-picked-list">
+              @for (name of selectedDepartments(); track name) {
+                <button class="hr-job-picked hr-job-picked--department" type="button" (click)="removeDepartment(name)">
+                  <span>{{ name }}</span>
+                  <span aria-hidden="true">x</span>
+                </button>
+              } @empty {
+                <span class="muted small">No department selected.</span>
+              }
+            </div>
           </label>
 
           <label class="field">
@@ -147,14 +173,66 @@
         </div>
 
         <label class="field">
-          <span class="field__label">Required Skills (comma-separated)</span>
-          <input class="input" formControlName="skillsRequired" placeholder="e.g., Angular, TypeScript, RxJS" />
+          <span class="field__label">Required Skills</span>
+          <input
+            class="input"
+            type="search"
+            [value]="requiredSkillQuery()"
+            (input)="setRequiredSkillQuery($any($event.target).value)"
+            (keydown.enter)="addFirstSkillMatch('skillsRequired'); $event.preventDefault()"
+            placeholder="Type to search required skills"
+          />
+          <div class="hr-job-suggest-list">
+            @for (name of filteredSkillOptions('skillsRequired'); track name) {
+              <button class="hr-job-suggest hr-job-suggest--required" type="button" (click)="addSkill('skillsRequired', name)">
+                {{ name }}
+              </button>
+            } @empty {
+              <span class="muted small">No matching required skill.</span>
+            }
+          </div>
+          <div class="hr-job-picked-list">
+            @for (name of selectedRequiredSkills(); track name) {
+              <button class="hr-job-picked hr-job-picked--required" type="button" (click)="removeSkill('skillsRequired', name)">
+                <span>{{ name }}</span>
+                <span aria-hidden="true">x</span>
+              </button>
+            } @empty {
+              <span class="muted small">No required skills selected.</span>
+            }
+          </div>
         </label>
 
         <div class="grid2">
           <label class="field">
-            <span class="field__label">Nice-to-have Skills (comma-separated)</span>
-            <input class="input" formControlName="skillsNiceToHave" placeholder="e.g., NgRx, Docker" />
+            <span class="field__label">Nice-to-have Skills</span>
+            <input
+              class="input"
+              type="search"
+              [value]="niceSkillQuery()"
+              (input)="setNiceSkillQuery($any($event.target).value)"
+              (keydown.enter)="addFirstSkillMatch('skillsNiceToHave'); $event.preventDefault()"
+              placeholder="Type to search nice-to-have skills"
+            />
+            <div class="hr-job-suggest-list">
+              @for (name of filteredSkillOptions('skillsNiceToHave'); track name) {
+                <button class="hr-job-suggest hr-job-suggest--nice" type="button" (click)="addSkill('skillsNiceToHave', name)">
+                  {{ name }}
+                </button>
+              } @empty {
+                <span class="muted small">No matching nice-to-have skill.</span>
+              }
+            </div>
+            <div class="hr-job-picked-list">
+              @for (name of selectedNiceSkills(); track name) {
+                <button class="hr-job-picked hr-job-picked--nice" type="button" (click)="removeSkill('skillsNiceToHave', name)">
+                  <span>{{ name }}</span>
+                  <span aria-hidden="true">x</span>
+                </button>
+              } @empty {
+                <span class="muted small">No nice-to-have skills selected.</span>
+              }
+            </div>
           </label>
 
           <label class="field">

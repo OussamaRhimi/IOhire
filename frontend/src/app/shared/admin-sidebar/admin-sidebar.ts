@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule, type LucideIconData } from 'lucide-angular';
 import {
+  Activity,
   BriefcaseBusiness,
   FileText,
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   PanelLeftOpen,
   Shield,
   Sun,
+  Target,
   Users,
 } from 'lucide-angular/src/icons';
 import { clearHrJwt } from '../../core/auth/auth.storage';
@@ -46,6 +48,8 @@ export class AdminSidebar {
     { label: 'Job Postings', icon: BriefcaseBusiness, link: '/admin/hr/jobs' },
     { label: 'Candidates', icon: Users, link: '/admin/hr/candidates' },
     { label: 'CV Templates', icon: FileText, link: '/admin/hr/templates' },
+    { label: 'Skills', icon: Target, link: '/admin/hr/skills' },
+    { label: 'Departments', icon: Activity, link: '/admin/hr/departments' },
   ];
 
   toggleCollapse() {

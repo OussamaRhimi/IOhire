@@ -35,6 +35,26 @@
               }
             </select>
           </label>
+          <label class="field">
+            <span class="field__label">Score filter</span>
+            <select class="input" formControlName="scoreFilter">
+              @for (option of scoreOptions; track option.value + option.label) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        <div class="grid2">
+          <label class="field">
+            <span class="field__label">Open job</span>
+            <select class="input" formControlName="jobId">
+              <option value="">All open jobs</option>
+              @for (job of openJobs(); track job.id) {
+                <option [value]="job.id">{{ job.title }}</option>
+              }
+            </select>
+          </label>
         </div>
 
         <label class="field">
@@ -64,8 +84,52 @@
     } @else if (filtered().length === 0) {
       <div class="alert">No candidates match the current filter.</div>
     } @else {
+      <div class="card candidate-bulk-toolbar">
+        <div class="muted small">
+          {{ selectedCount() }} selected out of {{ filtered().length }} filtered candidates
+        </div>
+        <div class="actions">
+          <button class="btn btn--ghost btn--sm" type="button" (click)="selectAllFiltered()" [disabled]="saving() || filtered().length === 0">
+            Select filtered
+          </button>
+          <button class="btn btn--ghost btn--sm" type="button" (click)="clearSelection()" [disabled]="saving() || selectedCount() === 0">
+            Clear selection
+          </button>
+          <select
+            class="input input--sm candidate-bulk-status"
+            [value]="bulkStatus()"
+            (change)="setBulkStatus($any($event.target).value)"
+            [disabled]="saving() || selectedCount() === 0"
+          >
+            <option value="">Set status...</option>
+            @for (s of statusOptions(); track s) {
+              <option [value]="s">{{ statusLabel(s) }}</option>
+            }
+          </select>
+          <button
+            class="btn btn--primary btn--sm"
+            type="button"
+            (click)="applyBulkStatus()"
+            [disabled]="saving() || selectedCount() === 0 || !bulkStatus()"
+          >
+            Apply to selected
+          </button>
+        </div>
+      </div>
+
       <div class="table table--candidates-modern">
         <div class="table__head">
+          <div class="candidate-select-cell">
+            <input
+              type="checkbox"
+              class="candidate-row-check"
+              [checked]="allFilteredSelected()"
+              [indeterminate]="partlyFilteredSelected()"
+              (change)="toggleSelectAllFiltered($any($event.target).checked)"
+              [disabled]="saving() || filtered().length === 0"
+              aria-label="Select all filtered candidates"
+            />
+          </div>
           <div>Candidate</div>
           <div>Position</div>
           <div>Submitted</div>
@@ -75,6 +139,16 @@
         </div>
         @for (c of filtered(); track (c.documentId || c.id)) {
           <div class="table__row">
+            <div class="candidate-select-cell">
+              <input
+                type="checkbox"
+                class="candidate-row-check"
+                [checked]="isSelected(c.id)"
+                (change)="toggleCandidateSelection(c.id, $any($event.target).checked)"
+                [disabled]="saving()"
+                aria-label="Select candidate"
+              />
+            </div>
             <div>
               <div class="strong" style="font-size: 18px">{{ c.fullName || '-' }}</div>
               <div class="muted">{{ c.email || '' }}</div>

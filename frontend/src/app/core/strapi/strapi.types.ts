@@ -13,8 +13,15 @@ export type JobPostingStatus = 'draft' | 'open' | 'closed';
 export type JobRequirements = {
   skillsRequired?: string[];
   skillsNiceToHave?: string[];
+  departments?: string[];
   minYearsExperience?: number;
   notes?: string;
+};
+
+export type HrLookupItem = {
+  id: number;
+  documentId: string | null;
+  name: string;
 };
 
 export type PublicJobPosting = {
@@ -72,6 +79,7 @@ export type HrCandidate = {
   documentId: string | null;
   fullName: string | null;
   email: string | null;
+  jobId: number | null;
   status: CandidateStatus | null;
   score: number | null;
   hrNotes: string | null;

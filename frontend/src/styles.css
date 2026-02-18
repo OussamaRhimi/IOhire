@@ -952,13 +952,26 @@ textarea.input {
   cursor: pointer;
 }
 
+.candidate-bulk-toolbar {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.candidate-bulk-status {
+  min-width: 180px;
+}
+
 .table--candidates-modern {
   overflow: auto;
 }
 
 .table--candidates-modern .table__head,
 .table--candidates-modern .table__row {
-  grid-template-columns: minmax(240px, 1.4fr) minmax(180px, 1fr) 0.7fr 0.9fr 0.9fr 1fr;
+  grid-template-columns: 64px minmax(240px, 1.4fr) minmax(180px, 1fr) 0.7fr 0.9fr 0.9fr 1fr;
 }
 
 .table--candidates-modern .table__head {
@@ -966,7 +979,19 @@ textarea.input {
 }
 
 .table--candidates-modern .table__row {
-  min-width: 980px;
+  min-width: 1040px;
+}
+
+.candidate-select-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.candidate-row-check {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
 }
 
 .candidate-status {

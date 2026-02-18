@@ -1,116 +1,179 @@
 @startuml
-title Sprint 3 - Class Diagram (AI Processing, Standardization, Recommendation)
-left to right direction
+title Sprint 3 - Class Diagram (Academic Domain Model)
+
 skinparam classAttributeIconSize 0
-skinparam packageStyle rectangle
 skinparam shadowing false
+skinparam linetype ortho
+left to right direction
 
-package "Entity and Value Objects" {
-  class Candidate <<entity>> {
-    +id: int
-    +status: string
-    +score: decimal
-    +cvTemplateKey: string
-    +extractedData: json
-    +standardizedCvMarkdown: text
-  }
-
-  class JobPosting <<entity>> {
-    +id: int
-    +title: string
-    +description: text
-    +requirements: json
-    +status: string
-  }
-
-  class JobRecommendation <<value object>> {
-    +compatibility: decimal
-    +matchedRequired: String[*]
-    +missingRequired: String[*]
-    +matchedNiceToHave: String[*]
-    +missingNiceToHave: String[*]
-  }
-
-  class RecommendationRequest <<value object>> {
-    +resumeMimeType: string
-    +resumeSizeBytes: long
-  }
-
-  class RecommendationResult <<value object>> {
-    +skills: String[*]
-    +totalConsidered: int
-    +message: string
-  }
+class Candidate {
+  --
+  +requestRecommendations(resume: Resume): JobRecommendation[*]
 }
 
-package "Control Layer" {
-  class CandidateController <<control>> {
-    +submitApplication()
-    +publicRecommendJobPostings()
-    +hrReprocess(id)
-    +downloadStandardizedCvPdf(id)
-    +publicDownloadStandardizedCvPdf(token)
-  }
+class CandidateApplication {
+  +applicationId: int
+  +status: ApplicationStatus
+  +score: decimal
+  +cvTemplateKey: CvTemplateKey
+  +extractedData: json
+  +standardizedCvMarkdown: text
+  --
+  +setStatus(status: ApplicationStatus): void
+  +setScore(score: decimal): void
 }
 
-package "Service Layer" {
-  class CandidateAIWorker <<service>> {
-    +processCandidate(candidateId)
-  }
-
-  class RecommendationService <<service>> {
-    +extractSkills(cvText, knownSkills): String[*]
-    +rankOpenJobs(skills, openJobs): JobRecommendation[*]
-    +recommendFromResume(request): RecommendationResult
-  }
-
-  class ResumeTextExtractor <<service>> {
-    +extractTextFromResume(file): string
-  }
-
-  class OllamaClient <<gateway>> {
-    +chat(systemPrompt, userPrompt, format): string
-  }
-
-  class DeterministicEvaluator <<service>> {
-    +evaluate(requirements, parsedData): EvaluationResult
-  }
-
-  class CvTemplateService <<service>> {
-    +renderMarkdownFromTemplate(key, content): string
-    +renderHtmlFromTemplate(key, payload): string
-  }
-
-  class PdfRenderer <<service>> {
-    +renderCvMarkdownToPdf(markdown, contact): Buffer
-    +renderHtmlToPdf(html, title): Buffer
-  }
-
-  class JsonRecoveryService <<service>> {
-    +parseJsonWithRecovery(raw): object
-  }
+class Resume {
+  +fileId: int
+  +url: string
+  +mimeType: string
+  +sizeBytes: long
+  --
+  +loadText(): string
 }
 
-CandidateController --> CandidateAIWorker
-CandidateController --> RecommendationService
-CandidateController --> PdfRenderer
+class JobPosting {
+  +jobId: int
+  +title: string
+  +status: JobPostingStatus
+  --
+  +isOpen(): boolean
+}
 
-CandidateAIWorker --> ResumeTextExtractor
-CandidateAIWorker --> OllamaClient
-CandidateAIWorker --> DeterministicEvaluator
-CandidateAIWorker --> CvTemplateService
-CandidateAIWorker --> JsonRecoveryService
-CandidateAIWorker --> Candidate
+class JobRequirement {
+  +skillsRequired: string[*]
+  +skillsNiceToHave: string[*]
+  +minYearsExperience: int
+  +notes: string
+  --
+  +toComparisonModel(): json
+}
 
-RecommendationService --> ResumeTextExtractor
-RecommendationService --> OllamaClient
-RecommendationService --> JsonRecoveryService
-RecommendationService --> JobPosting
-RecommendationService --> RecommendationRequest
-RecommendationService --> JobRecommendation
-RecommendationService --> RecommendationResult
+class ExtractedData {
+  +summary: string
+  +skills: string[*]
+  +languages: string[*]
+  +projects: string[*]
+  +missingFields: string[*]
+  --
+  +normalizeSkills(): void
+}
 
-RecommendationResult "1" o-- "0..3" JobRecommendation : top >
-JobRecommendation "*" --> "1" JobPosting : ranks >
+class EvaluationReport {
+  +fitScore: decimal
+  +completenessScore: decimal
+  +totalScore: decimal
+  +missingSkills: string[*]
+  +missingFields: string[*]
+  +notes: string
+  --
+  +calculateTotal(): decimal
+}
+
+class StandardizedCV {
+  +markdown: text
+  +templateKey: CvTemplateKey
+  +generatedAt: datetime
+  --
+  +renderMarkdown(): text
+}
+
+class CVTemplate {
+  +key: CvTemplateKey
+  +name: string
+  +description: string
+  --
+  +render(content: ExtractedData): StandardizedCV
+}
+
+class RecommendationRequest {
+  +resumeMimeType: string
+  +resumeSizeBytes: long
+  --
+  +isValid(): boolean
+}
+
+class SkillProfile {
+  +skills: string[*]
+  +source: string
+  --
+  +dedupe(): void
+}
+
+class JobRecommendation {
+  +compatibility: decimal
+  +matchedRequired: string[*]
+  +missingRequired: string[*]
+  +matchedNiceToHave: string[*]
+  +missingNiceToHave: string[*]
+  --
+  +computeCompatibility(): decimal
+}
+
+class AIProcessor <<AI>> {
+  +processApplication(appId: int): void
+  +extractResumeText(resume: Resume): string
+  +parseCV(text: string): ExtractedData
+  +evaluateFit(data: ExtractedData, req: JobRequirement): EvaluationReport
+  +generateStandardCV(data: ExtractedData, template: CVTemplate): StandardizedCV
+}
+
+class RecommendationEngine <<AI>> {
+  +extractSkills(req: RecommendationRequest): SkillProfile
+  +rankOpenJobs(skills: SkillProfile, jobs: JobPosting[*]): JobRecommendation[*]
+  +topMatches(ranked: JobRecommendation[*]): JobRecommendation[*]
+}
+
+JobPosting "1" *-- "1" JobRequirement
+CandidateApplication "1" o-- "0..1" ExtractedData
+CandidateApplication "1" o-- "0..1" EvaluationReport
+CandidateApplication "1" o-- "0..1" StandardizedCV
+StandardizedCV "1" --> "1" CVTemplate : basedOn >
+
+AIProcessor ..> CandidateApplication : updates status/score >
+AIProcessor ..> Resume
+AIProcessor ..> JobRequirement
+AIProcessor ..> ExtractedData
+AIProcessor ..> EvaluationReport
+AIProcessor ..> StandardizedCV
+AIProcessor ..> CVTemplate
+
+RecommendationEngine ..> RecommendationRequest
+RecommendationEngine ..> SkillProfile
+RecommendationEngine ..> JobPosting
+RecommendationEngine ..> JobRecommendation
+JobRecommendation "*" --> "1" JobPosting : targets >
+Candidate ..> JobRecommendation : views >
+
+enum ApplicationStatus {
+  new
+  processing
+  processed
+  reviewing
+  shortlisted
+  rejected
+  hired
+  error
+}
+
+enum JobPostingStatus {
+  draft
+  open
+  closed
+}
+
+enum CvTemplateKey {
+  standard
+  experience_first
+  skills_first
+  compact
+  education_first
+  project_focus
+  sidebar_photo
+  accent_pink
+  teal_circle
+  navy_gold
+  sunset
+}
 
 @enduml

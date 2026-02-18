@@ -1,31 +1,47 @@
 @startuml
-title IOhire - University-Style Class Diagram (Conceptual)
+title IOhire - Full Class Diagram (Academic Domain Model)
 
 skinparam classAttributeIconSize 0
-left to right direction
 skinparam shadowing false
+skinparam linetype ortho
+left to right direction
 
 '======================
-' Core actors
+' Core users
 '======================
 abstract class User {
   +userId: int
   +fullName: string
   +email: string
+  --
+  +authenticate(password: string): boolean
+  +logout(): void
 }
 
-class Candidate
-class HRUser {
-  +role: string
+class Candidate {
+  --
+  +submitApplication(jobId: int, resume: Resume): CandidateApplication
+  +trackApplication(token: string): ApplicationStatus
+  +deleteApplication(token: string): void
+  +requestRecommendations(resume: Resume): JobRecommendation[*]
 }
-class Administrator
+
+class HRUser {
+  +email: string
+  +password: string
+  +role: string
+  --
+  +createJobPosting(data): JobPosting
+  +updateJobPosting(jobId: int, patch): JobPosting
+  +filterCandidates(status: ApplicationStatus, scoreRule: string, jobId: int): CandidateApplication[*]
+  +applyBulkStatus(candidateIds: int[*], status: ApplicationStatus): int
+}
 
 User <|-- Candidate
 User <|-- HRUser
-HRUser <|-- Administrator
 
 '======================
-' Recruitment domain
+' Recruitment entities
 '======================
 class JobPosting {
   +jobId: int
@@ -34,16 +50,46 @@ class JobPosting {
   +status: JobPostingStatus
   +createdAt: datetime
   +updatedAt: datetime
+  --
+  +openPosting(): void
+  +closePosting(): void
+  +updateDetails(title: string, description: text): void
 }
 
 class JobRequirement {
   +skillsRequired: string[*]
   +skillsNiceToHave: string[*]
+  +departments: string[*]
   +minYearsExperience: int
   +notes: string
+  --
+  +addRequiredSkill(skill: string): void
+  +removeRequiredSkill(skill: string): void
+  +addDepartment(department: string): void
+  +setMinYearsExperience(years: int): void
 }
 
-class CandidateApplication {
+class Skill {
+  +skillId: int
+  +name: string
+  --
+  +add(name: string): Skill
+  +update(name: string): void
+  +delete(): void
+  +search(query: string): Skill[*]
+}
+
+class Department {
+  +departmentId: int
+  +name: string
+  --
+  +add(name: string): Department
+  +update(name: string): void
+  +delete(): void
+  +search(query: string): Department[*]
+}
+
+class CandidateApplication <<association class>> {
   +applicationId: int
   +publicToken: string
   +consent: boolean
@@ -54,6 +100,11 @@ class CandidateApplication {
   +hrNotes: text
   +createdAt: datetime
   +updatedAt: datetime
+  --
+  +setStatus(status: ApplicationStatus): void
+  +setScore(score: decimal): void
+  +setHRNotes(notes: text): void
+  +markRetention(until: datetime): void
 }
 
 class Resume {
@@ -62,14 +113,35 @@ class Resume {
   +url: string
   +mimeType: string
   +sizeBytes: long
+  --
+  +validateType(): boolean
+  +validateSize(maxBytes: long): boolean
 }
 
+Candidate "1" -- "0..*" JobPosting : appliesFor >
+(Candidate, JobPosting) .. CandidateApplication
+
+HRUser "1" -- "0..*" JobPosting : manages >
+HRUser "1" -- "0..*" CandidateApplication : reviews >
+
+JobPosting "1" *-- "1" JobRequirement
+JobRequirement "0..*" -- "0..*" Skill : uses >
+JobRequirement "0..*" -- "0..*" Department : uses >
+
+CandidateApplication "1" *-- "1" Resume
+
+'======================
+' AI-related domain classes
+'======================
 class ExtractedData {
   +summary: string
   +skills: string[*]
   +languages: string[*]
   +projects: string[*]
   +missingFields: string[*]
+  --
+  +normalizeSkills(): void
+  +mergeFromParser(raw): void
 }
 
 class EvaluationReport {
@@ -79,63 +151,38 @@ class EvaluationReport {
   +missingSkills: string[*]
   +missingFields: string[*]
   +notes: string
+  --
+  +calculateTotal(): decimal
 }
 
 class StandardizedCV {
   +markdown: text
   +templateKey: CvTemplateKey
   +generatedAt: datetime
+  --
+  +renderMarkdown(): text
 }
 
 class CVTemplate {
   +key: CvTemplateKey
   +name: string
   +description: string
+  --
+  +render(content: ExtractedData): StandardizedCV
 }
 
-Candidate "1" -- "0..*" CandidateApplication : submits
-JobPosting "1" -- "0..*" CandidateApplication : receives
-HRUser "1" -- "0..*" JobPosting : manages
-HRUser "1" -- "0..*" CandidateApplication : reviews
-
-JobPosting "1" *-- "1" JobRequirement
-CandidateApplication "1" *-- "1" Resume
-CandidateApplication "1" o-- "0..1" ExtractedData
-CandidateApplication "1" o-- "0..1" EvaluationReport
-CandidateApplication "1" o-- "0..1" StandardizedCV
-StandardizedCV --> CVTemplate : uses
-HRUser ..> CVTemplate : selects
-
-'======================
-' AI processing
-'======================
-class AIProcessor {
-  +processApplication(appId: int): void
-  +extractResumeText(resume: Resume): string
-  +parseCV(text: string): ExtractedData
-  +evaluateFit(data: ExtractedData, req: JobRequirement): EvaluationReport
-  +generateStandardCV(data: ExtractedData, template: CVTemplate): StandardizedCV
-}
-
-AIProcessor ..> Resume
-AIProcessor ..> JobRequirement
-AIProcessor ..> ExtractedData
-AIProcessor ..> EvaluationReport
-AIProcessor ..> StandardizedCV
-AIProcessor ..> CVTemplate
-AIProcessor ..> CandidateApplication : updates status/score
-
-'======================
-' Recommendation flow
-'======================
 class RecommendationRequest {
   +resumeMimeType: string
   +resumeSizeBytes: long
+  --
+  +isValid(): boolean
 }
 
 class SkillProfile {
   +skills: string[*]
   +source: string
+  --
+  +dedupe(): void
 }
 
 class JobRecommendation {
@@ -144,25 +191,43 @@ class JobRecommendation {
   +missingRequired: string[*]
   +matchedNiceToHave: string[*]
   +missingNiceToHave: string[*]
+  --
+  +computeCompatibility(): decimal
 }
 
-class RecommendationEngine {
+class AIProcessor <<AI>> {
+  +processApplication(appId: int): void
+  +extractResumeText(resume: Resume): string
+  +parseCV(text: string): ExtractedData
+  +evaluateFit(data: ExtractedData, req: JobRequirement): EvaluationReport
+  +generateStandardCV(data: ExtractedData, template: CVTemplate): StandardizedCV
+}
+
+class RecommendationEngine <<AI>> {
   +extractSkills(req: RecommendationRequest): SkillProfile
-  +rankJobs(skills: SkillProfile, jobs: JobPosting[*]): JobRecommendation[*]
+  +rankOpenJobs(skills: SkillProfile, jobs: JobPosting[*]): JobRecommendation[*]
   +topMatches(ranked: JobRecommendation[*]): JobRecommendation[*]
 }
+
+CandidateApplication "1" o-- "0..1" ExtractedData
+CandidateApplication "1" o-- "0..1" EvaluationReport
+CandidateApplication "1" o-- "0..1" StandardizedCV
+StandardizedCV "1" --> "1" CVTemplate : basedOn >
+
+AIProcessor ..> CandidateApplication : updates status/score >
+AIProcessor ..> Resume
+AIProcessor ..> JobRequirement
+AIProcessor ..> ExtractedData
+AIProcessor ..> EvaluationReport
+AIProcessor ..> StandardizedCV
+AIProcessor ..> CVTemplate
 
 RecommendationEngine ..> RecommendationRequest
 RecommendationEngine ..> SkillProfile
 RecommendationEngine ..> JobPosting
 RecommendationEngine ..> JobRecommendation
-JobRecommendation --> JobPosting : targets
-Candidate ..> JobRecommendation : views top matches
-
-note right of RecommendationEngine
-  Stateless recommendation path:
-  upload CV -> extract skills -> rank open jobs.
-end note
+JobRecommendation "*" --> "1" JobPosting : targets >
+Candidate ..> JobRecommendation : views >
 
 '======================
 ' Enums

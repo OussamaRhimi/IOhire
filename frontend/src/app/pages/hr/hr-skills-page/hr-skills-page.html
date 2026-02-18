@@ -1,0 +1,68 @@
+<section class="container container--wide hr-taxonomy-page">
+  <div class="hr-taxonomy-head">
+    <div>
+      <h1>Skills</h1>
+      <p class="muted">Manage reusable skills used in HR job forms.</p>
+    </div>
+    <button class="btn btn--ghost" type="button" (click)="refresh()" [disabled]="loading() || saving()">Refresh</button>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert--error">{{ error() }}</div>
+  }
+
+  <div class="card hr-taxonomy-card">
+    <form class="hr-taxonomy-create" [formGroup]="createForm" (ngSubmit)="create()">
+      <input class="input" formControlName="name" placeholder="e.g., TypeScript" />
+      <button class="btn btn--primary" type="submit" [disabled]="saving()">
+        <lucide-icon [img]="iconPlus" [size]="15" />
+        <span>Add Skill</span>
+      </button>
+    </form>
+
+    <input
+      class="input"
+      type="search"
+      [value]="searchQuery()"
+      (input)="setSearchQuery($any($event.target).value)"
+      placeholder="Search skills..."
+    />
+
+    @if (loading()) {
+      <div class="skeleton" style="height: 42px; width: 100%; margin-top: 10px"></div>
+      <div class="skeleton" style="height: 42px; width: 100%; margin-top: 10px"></div>
+    } @else if (skills().length === 0) {
+      <div class="alert" style="margin-top: 10px">No skills yet.</div>
+    } @else if (filteredSkills().length === 0) {
+      <div class="alert" style="margin-top: 10px">No skills match your search.</div>
+    } @else {
+      <div class="hr-taxonomy-list">
+        @for (item of filteredSkills(); track item.id) {
+          <div class="hr-taxonomy-row">
+            @if (editingId() === item.id) {
+              <input class="input" [formControl]="editForm.controls.name" />
+              <div class="actions">
+                <button class="btn btn--ghost hr-taxonomy-icon-btn" type="button" [disabled]="saving()" (click)="saveEdit(item)">
+                  <lucide-icon [img]="iconSave" [size]="15" />
+                </button>
+                <button class="btn btn--ghost hr-taxonomy-icon-btn" type="button" [disabled]="saving()" (click)="cancelEdit()">
+                  <lucide-icon [img]="iconCancel" [size]="15" />
+                </button>
+              </div>
+            } @else {
+              <div class="hr-taxonomy-name">{{ item.name }}</div>
+              <div class="actions">
+                <button class="btn btn--ghost hr-taxonomy-icon-btn" type="button" [disabled]="saving()" (click)="startEdit(item)">
+                  <lucide-icon [img]="iconEdit" [size]="15" />
+                </button>
+                <button class="btn btn--ghost hr-taxonomy-icon-btn hr-taxonomy-icon-btn--danger" type="button" [disabled]="saving()" (click)="delete(item)">
+                  <lucide-icon [img]="iconTrash" [size]="15" />
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</section>

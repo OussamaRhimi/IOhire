@@ -4,14 +4,39 @@ import { LucideAngularModule, type LucideIconData } from 'lucide-angular';
 import { Calendar, Edit2, Plus, Trash2, Users, X } from 'lucide-angular/src/icons';
 import { toErrorMessage } from '../../../core/http/http-error';
 import { StrapiApi } from '../../../core/strapi/strapi.api';
-import { HrCandidate, HrJobPosting, JobPostingStatus, JobRequirements } from '../../../core/strapi/strapi.types';
+import { HrCandidate, HrJobPosting, HrLookupItem, JobPostingStatus, JobRequirements } from '../../../core/strapi/strapi.types';
 
-function parseSkillList(raw: string): string[] {
-  const parts = String(raw ?? '')
-    .split(/[\n,]+/g)
-    .map((v) => v.trim())
-    .filter(Boolean);
-  return Array.from(new Set(parts)).slice(0, 50);
+function normalizeLabel(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function toStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((v) => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(/[\n,]+/g)
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function dedupeStringList(values: unknown): string[] {
+  const items = toStringList(values);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    const key = normalizeLabel(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out.slice(0, 100);
 }
 
 function coercePositiveInt(value: unknown): number | null {
@@ -22,7 +47,7 @@ function coercePositiveInt(value: unknown): number | null {
 }
 
 type JobMeta = {
-  department: string;
+  departments: string[];
   location: string;
   employmentType: string;
   customNotes: string;
@@ -30,7 +55,7 @@ type JobMeta = {
 
 function parseJobMeta(rawNotes: unknown): JobMeta {
   const out: JobMeta = {
-    department: '',
+    departments: [],
     location: '',
     employmentType: '',
     customNotes: '',
@@ -39,10 +64,13 @@ function parseJobMeta(rawNotes: unknown): JobMeta {
   if (!source.trim()) return out;
 
   const extra: string[] = [];
-  for (const line of source.split(/\r?\n/g).map((v) => v.trim()).filter(Boolean)) {
-    const mDepartment = /^department\s*:\s*(.+)$/i.exec(line);
-    if (mDepartment) {
-      out.department = mDepartment[1].trim();
+  for (const line of source
+    .split(/\r?\n/g)
+    .map((v) => v.trim())
+    .filter(Boolean)) {
+    const mDepartments = /^departments?\s*:\s*(.+)$/i.exec(line);
+    if (mDepartments) {
+      out.departments = dedupeStringList(mDepartments[1]);
       continue;
     }
     const mLocation = /^location\s*:\s*(.+)$/i.exec(line);
@@ -62,9 +90,9 @@ function parseJobMeta(rawNotes: unknown): JobMeta {
   return out;
 }
 
-function composeJobNotes(meta: { department: string; location: string; employmentType: string; customNotes: string }): string | undefined {
+function composeJobNotes(meta: { departments: string[]; location: string; employmentType: string; customNotes: string }): string | undefined {
   const lines: string[] = [];
-  if (meta.department.trim()) lines.push(`Department: ${meta.department.trim()}`);
+  if (meta.departments.length > 0) lines.push(`Departments: ${meta.departments.join(', ')}`);
   if (meta.location.trim()) lines.push(`Location: ${meta.location.trim()}`);
   if (meta.employmentType.trim()) lines.push(`Type: ${meta.employmentType.trim()}`);
   if (meta.customNotes.trim()) lines.push(meta.customNotes.trim());
@@ -87,17 +115,22 @@ export class HrJobsPage {
   readonly jobs = signal<HrJobPosting[]>([]);
   readonly statuses = signal<JobPostingStatus[]>([]);
   readonly applicantCounts = signal<Record<string, number>>({});
+  readonly skills = signal<HrLookupItem[]>([]);
+  readonly departments = signal<HrLookupItem[]>([]);
   readonly showModal = signal(false);
   readonly editingJob = signal<HrJobPosting | null>(null);
+  readonly departmentQuery = signal('');
+  readonly requiredSkillQuery = signal('');
+  readonly niceSkillQuery = signal('');
 
   readonly createForm = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.minLength(3)]],
-    department: [''],
+    departments: [[] as string[]],
     location: [''],
     employmentType: [''],
     description: ['', [Validators.required, Validators.minLength(10)]],
-    skillsRequired: [''],
-    skillsNiceToHave: [''],
+    skillsRequired: [[] as string[]],
+    skillsNiceToHave: [[] as string[]],
     minYearsExperience: [null as number | null],
     requirementsNotes: [''],
     status: ['draft' as JobPostingStatus, [Validators.required]],
@@ -115,7 +148,7 @@ export class HrJobsPage {
   readonly iconClose: LucideIconData = X;
 
   async ngOnInit() {
-    await this.loadMeta();
+    await Promise.all([this.loadMeta(), this.loadTaxonomies()]);
     await this.refresh();
   }
 
@@ -126,6 +159,18 @@ export class HrJobsPage {
       this.statuses.set(statuses);
     } catch {
       this.statuses.set([]);
+    }
+  }
+
+  async loadTaxonomies() {
+    try {
+      const [skills, departments] = await Promise.all([this.api.listHrSkills(), this.api.listHrDepartments()]);
+      this.skills.set(skills);
+      this.departments.set(departments);
+    } catch (e) {
+      this.error.set(toErrorMessage(e));
+      this.skills.set([]);
+      this.departments.set([]);
     }
   }
 
@@ -144,15 +189,17 @@ export class HrJobsPage {
   }
 
   openCreateModal() {
+    void this.loadTaxonomies();
+    this.resetPickerQueries();
     this.editingJob.set(null);
     this.createForm.reset({
       title: '',
-      department: '',
+      departments: [],
       location: '',
       employmentType: '',
       description: '',
-      skillsRequired: '',
-      skillsNiceToHave: '',
+      skillsRequired: [],
+      skillsNiceToHave: [],
       minYearsExperience: null,
       requirementsNotes: '',
       status: 'draft',
@@ -161,17 +208,21 @@ export class HrJobsPage {
   }
 
   openEditModal(job: HrJobPosting) {
+    void this.loadTaxonomies();
+    this.resetPickerQueries();
     const requirements = (job.requirements ?? {}) as JobRequirements;
     const meta = parseJobMeta(requirements.notes);
+    const departments = dedupeStringList(requirements.departments ?? meta.departments);
+
     this.editingJob.set(job);
     this.createForm.reset({
       title: job.title ?? '',
-      department: meta.department,
+      departments,
       location: meta.location,
       employmentType: meta.employmentType || 'Full-time',
       description: job.description ?? '',
-      skillsRequired: (requirements.skillsRequired ?? []).join(', '),
-      skillsNiceToHave: (requirements.skillsNiceToHave ?? []).join(', '),
+      skillsRequired: dedupeStringList(requirements.skillsRequired ?? []),
+      skillsNiceToHave: dedupeStringList(requirements.skillsNiceToHave ?? []),
       minYearsExperience: requirements.minYearsExperience ?? null,
       requirementsNotes: meta.customNotes,
       status: (job.status ?? 'draft') as JobPostingStatus,
@@ -181,7 +232,115 @@ export class HrJobsPage {
 
   closeModal() {
     if (this.saving()) return;
+    this.resetPickerQueries();
     this.showModal.set(false);
+  }
+
+  private resetPickerQueries() {
+    this.departmentQuery.set('');
+    this.requiredSkillQuery.set('');
+    this.niceSkillQuery.set('');
+  }
+
+  selectedDepartments(): string[] {
+    return dedupeStringList(this.createForm.controls.departments.value ?? []);
+  }
+
+  selectedRequiredSkills(): string[] {
+    return dedupeStringList(this.createForm.controls.skillsRequired.value ?? []);
+  }
+
+  selectedNiceSkills(): string[] {
+    return dedupeStringList(this.createForm.controls.skillsNiceToHave.value ?? []);
+  }
+
+  setDepartmentQuery(value: string) {
+    this.departmentQuery.set(String(value ?? ''));
+  }
+
+  setRequiredSkillQuery(value: string) {
+    this.requiredSkillQuery.set(String(value ?? ''));
+  }
+
+  setNiceSkillQuery(value: string) {
+    this.niceSkillQuery.set(String(value ?? ''));
+  }
+
+  availableDepartmentOptions(): string[] {
+    const selected = new Set(this.selectedDepartments().map(normalizeLabel));
+    return this.departments()
+      .map((d) => d.name)
+      .filter((name) => !selected.has(normalizeLabel(name)));
+  }
+
+  filteredDepartmentOptions(): string[] {
+    const query = normalizeLabel(this.departmentQuery());
+    const options = this.availableDepartmentOptions();
+    if (!query) return options;
+    return options.filter((name) => normalizeLabel(name).includes(query));
+  }
+
+  availableSkillOptions(control: 'skillsRequired' | 'skillsNiceToHave'): string[] {
+    const selected =
+      control === 'skillsRequired'
+        ? new Set(this.selectedRequiredSkills().map(normalizeLabel))
+        : new Set(this.selectedNiceSkills().map(normalizeLabel));
+
+    return this.skills()
+      .map((s) => s.name)
+      .filter((name) => !selected.has(normalizeLabel(name)));
+  }
+
+  filteredSkillOptions(control: 'skillsRequired' | 'skillsNiceToHave'): string[] {
+    const query = normalizeLabel(control === 'skillsRequired' ? this.requiredSkillQuery() : this.niceSkillQuery());
+    const options = this.availableSkillOptions(control);
+    if (!query) return options;
+    return options.filter((name) => normalizeLabel(name).includes(query));
+  }
+
+  addDepartment(name: string) {
+    const value = String(name ?? '').trim();
+    if (!value) return;
+    const next = dedupeStringList([...(this.createForm.controls.departments.value ?? []), value]);
+    this.createForm.controls.departments.setValue(next);
+    this.createForm.controls.departments.markAsDirty();
+    this.departmentQuery.set('');
+  }
+
+  removeDepartment(name: string) {
+    const key = normalizeLabel(name);
+    const next = this.selectedDepartments().filter((item) => normalizeLabel(item) !== key);
+    this.createForm.controls.departments.setValue(next);
+    this.createForm.controls.departments.markAsDirty();
+  }
+
+  addSkill(control: 'skillsRequired' | 'skillsNiceToHave', name: string) {
+    const value = String(name ?? '').trim();
+    if (!value) return;
+    const current = this.createForm.controls[control].value ?? [];
+    const next = dedupeStringList([...(current as string[]), value]);
+    this.createForm.controls[control].setValue(next);
+    this.createForm.controls[control].markAsDirty();
+    if (control === 'skillsRequired') this.requiredSkillQuery.set('');
+    else this.niceSkillQuery.set('');
+  }
+
+  addFirstDepartmentMatch() {
+    const first = this.filteredDepartmentOptions()[0];
+    if (first) this.addDepartment(first);
+  }
+
+  addFirstSkillMatch(control: 'skillsRequired' | 'skillsNiceToHave') {
+    const first = this.filteredSkillOptions(control)[0];
+    if (first) this.addSkill(control, first);
+  }
+
+  removeSkill(control: 'skillsRequired' | 'skillsNiceToHave', name: string) {
+    const key = normalizeLabel(name);
+    const current = dedupeStringList(this.createForm.controls[control].value ?? []);
+    const next = current.filter((item) => normalizeLabel(item) !== key);
+    this.createForm.controls[control].setValue(next);
+    this.createForm.controls[control].markAsDirty();
   }
 
   async submitModal() {
@@ -194,16 +353,20 @@ export class HrJobsPage {
     try {
       this.saving.set(true);
       this.error.set(null);
+
       const value = this.createForm.getRawValue();
+      const departments = dedupeStringList(value.departments);
       const notes = composeJobNotes({
-        department: value.department,
+        departments,
         location: value.location,
         employmentType: value.employmentType,
         customNotes: value.requirementsNotes,
       });
+
       const requirements: JobRequirements = {
-        skillsRequired: parseSkillList(value.skillsRequired),
-        skillsNiceToHave: parseSkillList(value.skillsNiceToHave),
+        skillsRequired: dedupeStringList(value.skillsRequired),
+        skillsNiceToHave: dedupeStringList(value.skillsNiceToHave),
+        departments,
         minYearsExperience: coercePositiveInt(value.minYearsExperience) ?? undefined,
         notes,
       };
@@ -211,6 +374,7 @@ export class HrJobsPage {
       const cleanedRequirements =
         (requirements.skillsRequired?.length ?? 0) > 0 ||
         (requirements.skillsNiceToHave?.length ?? 0) > 0 ||
+        (requirements.departments?.length ?? 0) > 0 ||
         requirements.minYearsExperience != null ||
         !!requirements.notes
           ? requirements
@@ -235,6 +399,7 @@ export class HrJobsPage {
         });
       }
 
+      this.resetPickerQueries();
       this.showModal.set(false);
       this.editingJob.set(null);
       await this.refresh();
@@ -262,8 +427,9 @@ export class HrJobsPage {
 
   jobMeta(job: HrJobPosting): JobMeta {
     const parsed = parseJobMeta(job.requirements?.notes);
+    const fromRequirements = dedupeStringList(job.requirements?.departments ?? []);
     return {
-      department: parsed.department || 'Engineering',
+      departments: fromRequirements.length > 0 ? fromRequirements : parsed.departments.length > 0 ? parsed.departments : ['General'],
       location: parsed.location || 'Remote',
       employmentType: parsed.employmentType || 'Full-time',
       customNotes: parsed.customNotes,
@@ -271,7 +437,7 @@ export class HrJobsPage {
   }
 
   jobSkillsRequired(job: HrJobPosting): string[] {
-    return (job.requirements?.skillsRequired ?? []).filter((s): s is string => typeof s === 'string' && !!s.trim());
+    return dedupeStringList(job.requirements?.skillsRequired ?? []);
   }
 
   jobExperience(job: HrJobPosting): string {

@@ -1,8 +1,83 @@
 @startuml
-title Sprint 2 - Class Diagram (Public Application + HR Candidate Ops)
-skinparam classAttributeIconSize 0
+title Sprint 2 - Class Diagram (Academic Domain Model)
 
-enum CandidateStatus {
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam linetype ortho
+left to right direction
+
+abstract class User {
+  +userId: int
+  +fullName: string
+  +email: string
+  --
+  +authenticate(password: string): boolean
+  +logout(): void
+}
+
+class Candidate {
+  --
+  +submitApplication(jobId: int, resume: Resume): CandidateApplication
+  +trackApplication(token: string): ApplicationStatus
+  +deleteApplication(token: string): void
+}
+
+class HRUser {
+  +email: string
+  +password: string
+  +role: string
+  --
+  +reviewApplication(appId: int): void
+  +updateApplicationStatus(appId: int, status: ApplicationStatus): void
+  +setApplicationNotes(appId: int, notes: text): void
+}
+
+User <|-- Candidate
+User <|-- HRUser
+
+class JobPosting {
+  +jobId: int
+  +title: string
+  +status: JobPostingStatus
+  --
+  +isOpen(): boolean
+}
+
+class CandidateApplication <<association class>> {
+  +applicationId: int
+  +publicToken: string
+  +consent: boolean
+  +consentAt: datetime
+  +retentionUntil: datetime
+  +status: ApplicationStatus
+  +score: decimal
+  +hrNotes: text
+  +createdAt: datetime
+  +updatedAt: datetime
+  --
+  +setStatus(status: ApplicationStatus): void
+  +setHRNotes(notes: text): void
+  +markRetention(until: datetime): void
+}
+
+class Resume {
+  +fileId: int
+  +fileName: string
+  +mimeType: string
+  +sizeBytes: long
+  +url: string
+  --
+  +validateType(): boolean
+  +validateSize(maxBytes: long): boolean
+}
+
+Candidate "1" -- "0..*" JobPosting : appliesFor >
+(Candidate, JobPosting) .. CandidateApplication
+
+CandidateApplication "1" *-- "1" Resume
+HRUser "1" -- "0..*" CandidateApplication : reviews >
+
+enum ApplicationStatus {
   new
   processing
   processed
@@ -13,61 +88,10 @@ enum CandidateStatus {
   error
 }
 
-class JobPosting {
-  +id: int
-  +title: string
-  +description: text
-  +requirements: json
-  +status: string
+enum JobPostingStatus {
+  draft
+  open
+  closed
 }
-
-class ResumeFile {
-  +id: int
-  +name: string
-  +mime: string
-  +size: number
-  +url: string
-}
-
-class Candidate {
-  +id: int
-  +fullName: string
-  +email: string
-  +status: CandidateStatus
-  +publicToken: string
-  +consent: boolean
-  +consentAt: datetime
-  +retentionUntil: datetime
-  +hrNotes: text
-}
-
-class CandidateController {
-  +submitApplication()
-  +publicStatus(token)
-  +publicDelete(token)
-  +hrFindOne(id)
-  +downloadResume(id)
-}
-
-class CandidateService {
-  +createFromApplication(formData)
-  +findByPublicToken(token)
-  +updateStatus(id, status)
-  +saveNotes(id, notes)
-  +deleteWithResume(id)
-}
-
-class UploadService {
-  +upload(file)
-  +remove(fileId)
-}
-
-CandidateController --> CandidateService
-CandidateService --> UploadService
-CandidateService --> Candidate
-Candidate --> ResumeFile : owns >
-Candidate --> JobPosting : applies to >
-JobPosting "1" <-- "0..*" Candidate
 
 @enduml
-

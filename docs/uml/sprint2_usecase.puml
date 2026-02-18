@@ -1,41 +1,45 @@
 @startuml
-title Sprint 2 - Use Case Diagram (Public Application + HR Candidate Ops)
+title Sprint 2 - Use Case Diagram (Academic)
 left to right direction
 skinparam packageStyle rectangle
+skinparam shadowing false
 
-actor Candidate
-actor "HR User" as HR
+actor Candidate as A_Candidate
+actor "HR User" as A_HR
 
 rectangle "IOhire - Sprint 2" {
-  usecase "Browse Open Jobs" as UC_BrowseJobs
-  usecase "Submit Application" as UC_Submit
-  usecase "Upload Resume\n(PDF/DOCX/TXT)" as UC_UploadResume
-  usecase "Provide Consent" as UC_Consent
-  usecase "Track Application\n(by public token)" as UC_Track
-  usecase "Delete Application\n(self-service)" as UC_DeletePublic
+  package "Public CandidateApplication Flow" {
+    usecase "UC21 - Browse Open JobPostings" as UC21
+    usecase "UC22 - Submit CandidateApplication" as UC22
+    usecase "UC23 - Upload Resume (PDF/DOCX/TXT)" as UC23
+    usecase "UC24 - Provide Consent" as UC24
+    usecase "UC25 - Track CandidateApplication (publicToken)" as UC25
+    usecase "UC26 - Delete CandidateApplication" as UC26
+  }
 
-  usecase "List Candidates" as UC_ListCandidates
-  usecase "View Candidate Detail" as UC_ViewCandidate
-  usecase "Update Candidate Status" as UC_Status
-  usecase "Save HR Notes" as UC_Notes
-  usecase "Download Original Resume" as UC_DownloadResume
+  package "HR CandidateApplication Review" {
+    usecase "UC27 - List CandidateApplications" as UC27
+    usecase "UC28 - View CandidateApplication Detail" as UC28
+    usecase "UC29 - Update CandidateApplication Status" as UC29
+    usecase "UC30 - Add HR Note to CandidateApplication" as UC30
+    usecase "UC31 - Download Candidate Resume" as UC31
+  }
 }
 
-Candidate --> UC_BrowseJobs
-Candidate --> UC_Submit
-Candidate --> UC_Track
-Candidate --> UC_DeletePublic
+A_Candidate --> UC21
+A_Candidate --> UC22
+A_Candidate --> UC25
+A_Candidate --> UC26
 
-UC_Submit ..> UC_UploadResume : <<include>>
-UC_Submit ..> UC_Consent : <<include>>
+UC22 ..> UC23 : <<include>>
+UC22 ..> UC24 : <<include>>
 
-HR --> UC_ListCandidates
-HR --> UC_ViewCandidate
-HR --> UC_Status
-HR --> UC_Notes
-HR --> UC_DownloadResume
+A_HR --> UC27
+A_HR --> UC28
+A_HR --> UC29
+A_HR --> UC30
+A_HR --> UC31
 
-UC_ViewCandidate ..> UC_ListCandidates : <<extend>>
+UC28 ..> UC27 : <<extend>>
 
 @enduml
-

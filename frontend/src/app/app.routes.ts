@@ -62,6 +62,17 @@ export const routes: Routes = [
           import('./pages/hr/hr-templates-page/hr-templates-page').then((m) => m.HrTemplatesPage),
       },
       {
+        path: 'hr/skills',
+        title: 'Skills',
+        loadComponent: () => import('./pages/hr/hr-skills-page/hr-skills-page').then((m) => m.HrSkillsPage),
+      },
+      {
+        path: 'hr/departments',
+        title: 'Departments',
+        loadComponent: () =>
+          import('./pages/hr/hr-departments-page/hr-departments-page').then((m) => m.HrDepartmentsPage),
+      },
+      {
         path: 'candidates/:id',
         title: 'Candidate',
         loadComponent: () =>
@@ -97,6 +108,19 @@ export const routes: Routes = [
         title: 'Candidate',
         canActivate: [hrAuthGuard],
         loadComponent: () => import('./pages/hr/hr-candidate-page/hr-candidate-page').then((m) => m.HrCandidatePage),
+      },
+      {
+        path: 'skills',
+        title: 'Skills',
+        canActivate: [hrAuthGuard],
+        loadComponent: () => import('./pages/hr/hr-skills-page/hr-skills-page').then((m) => m.HrSkillsPage),
+      },
+      {
+        path: 'departments',
+        title: 'Departments',
+        canActivate: [hrAuthGuard],
+        loadComponent: () =>
+          import('./pages/hr/hr-departments-page/hr-departments-page').then((m) => m.HrDepartmentsPage),
       },
     ],
   },

@@ -63,6 +63,10 @@ function normalizeRequirements(raw: unknown): Record<string, unknown> | null {
     toStringArray((value as any).niceToHave) ??
     toStringArray((value as any).optionalSkills);
 
+  const departments =
+    toStringArray((value as any).departments) ??
+    toStringArray((value as any).department);
+
   const minYearsExperience =
     toNonNegativeInt((value as any).minYearsExperience) ??
     toNonNegativeInt((value as any).minYears) ??
@@ -73,6 +77,7 @@ function normalizeRequirements(raw: unknown): Record<string, unknown> | null {
   const normalized: Record<string, unknown> = {};
   if (skillsRequired) normalized.skillsRequired = skillsRequired;
   if (skillsNiceToHave) normalized.skillsNiceToHave = skillsNiceToHave;
+  if (departments) normalized.departments = departments;
   if (minYearsExperience != null) normalized.minYearsExperience = minYearsExperience;
   if (notes) normalized.notes = notes;
 

@@ -5,6 +5,7 @@ import {
   HrCandidate,
   HrCandidateDetail,
   HrJobPosting,
+  HrLookupItem,
   JobPostingStatus,
   JobRequirements,
   CandidateStatus,
@@ -19,6 +20,17 @@ import { unwrapCollection, unwrapRelation } from './strapi.unwrap';
 @Injectable({ providedIn: 'root' })
 export class StrapiApi {
   private readonly http = inject(HttpClient);
+
+  private parseLookupItems(raw: unknown): HrLookupItem[] {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((item: any) => ({
+        id: typeof item?.id === 'number' ? item.id : Number(item?.id),
+        documentId: typeof item?.documentId === 'string' ? item.documentId : null,
+        name: typeof item?.name === 'string' ? item.name.trim() : '',
+      }))
+      .filter((item) => Number.isFinite(item.id) && !!item.name);
+  }
 
   async loginHr(input: { email: string; password: string }): Promise<{ jwt: string }> {
     const body = {
@@ -73,6 +85,52 @@ export class StrapiApi {
         : [],
       candidateStatuses: Array.isArray(res?.candidateStatuses) ? res.candidateStatuses.filter((v: any) => typeof v === 'string') : [],
     };
+  }
+
+  async listHrSkills(): Promise<HrLookupItem[]> {
+    const res = await firstValueFrom(this.http.get<unknown>('/api/hr/skills'));
+    return this.parseLookupItems(res);
+  }
+
+  async createHrSkill(name: string): Promise<HrLookupItem> {
+    const res = await firstValueFrom(this.http.post<any>('/api/hr/skills', { name }));
+    const item = this.parseLookupItems([res])[0];
+    if (!item) throw new Error('Invalid skill response.');
+    return item;
+  }
+
+  async updateHrSkill(id: number, name: string): Promise<HrLookupItem> {
+    const res = await firstValueFrom(this.http.put<any>(`/api/hr/skills/${id}`, { name }));
+    const item = this.parseLookupItems([res])[0];
+    if (!item) throw new Error('Invalid skill response.');
+    return item;
+  }
+
+  async deleteHrSkill(id: number): Promise<void> {
+    await firstValueFrom(this.http.delete(`/api/hr/skills/${id}`));
+  }
+
+  async listHrDepartments(): Promise<HrLookupItem[]> {
+    const res = await firstValueFrom(this.http.get<unknown>('/api/hr/departments'));
+    return this.parseLookupItems(res);
+  }
+
+  async createHrDepartment(name: string): Promise<HrLookupItem> {
+    const res = await firstValueFrom(this.http.post<any>('/api/hr/departments', { name }));
+    const item = this.parseLookupItems([res])[0];
+    if (!item) throw new Error('Invalid department response.');
+    return item;
+  }
+
+  async updateHrDepartment(id: number, name: string): Promise<HrLookupItem> {
+    const res = await firstValueFrom(this.http.put<any>(`/api/hr/departments/${id}`, { name }));
+    const item = this.parseLookupItems([res])[0];
+    if (!item) throw new Error('Invalid department response.');
+    return item;
+  }
+
+  async deleteHrDepartment(id: number): Promise<void> {
+    await firstValueFrom(this.http.delete(`/api/hr/departments/${id}`));
   }
 
   async listOpenJobPostings(): Promise<PublicJobPosting[]> {
@@ -249,6 +307,7 @@ export class StrapiApi {
         documentId: typeof c.documentId === 'string' ? c.documentId : null,
         fullName: typeof c.fullName === 'string' ? c.fullName : null,
         email: typeof c.email === 'string' ? c.email : null,
+        jobId: typeof job?.id === 'number' ? job.id : job?.id != null ? Number(job.id) : null,
         status: typeof c.status === 'string' ? c.status : null,
         score: typeof c.score === 'number' ? c.score : c.score ? Number(c.score) : null,
         hrNotes: typeof c.hrNotes === 'string' ? c.hrNotes : null,
@@ -267,6 +326,39 @@ export class StrapiApi {
       .map((k) => `/api/candidates/${encodeURIComponent(k)}`);
 
     await this.putFirstOk(paths, { data: patch });
+  }
+
+  async bulkUpdateHrCandidatesStatus(
+    ids: number[],
+    status: CandidateStatus
+  ): Promise<{ ok: boolean; updatedCount: number; updatedIds: number[]; notFoundIds: number[]; status: CandidateStatus }> {
+    const normalizedIds = Array.from(
+      new Set(
+        (ids ?? [])
+          .map((id) => (typeof id === 'number' ? id : Number(id)))
+          .filter((id) => Number.isFinite(id) && id > 0)
+          .map((id) => Math.trunc(id))
+      )
+    );
+
+    const res = await firstValueFrom(
+      this.http.post<any>('/api/hr/candidates/bulk-status', {
+        ids: normalizedIds,
+        status,
+      })
+    );
+
+    return {
+      ok: !!res?.ok,
+      status: (typeof res?.status === 'string' ? res.status : status) as CandidateStatus,
+      updatedCount: typeof res?.updatedCount === 'number' ? res.updatedCount : Number(res?.updatedCount) || 0,
+      updatedIds: Array.isArray(res?.updatedIds)
+        ? res.updatedIds.map((id: unknown) => Number(id)).filter((id: number) => Number.isFinite(id))
+        : [],
+      notFoundIds: Array.isArray(res?.notFoundIds)
+        ? res.notFoundIds.map((id: unknown) => Number(id)).filter((id: number) => Number.isFinite(id))
+        : [],
+    };
   }
 
   async hrReprocessCandidate(id: number): Promise<void> {
