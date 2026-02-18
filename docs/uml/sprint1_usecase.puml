@@ -1,0 +1,33 @@
+@startuml
+title Sprint 1 - Use Case Diagram (Foundation, Auth, Job Management)
+left to right direction
+skinparam packageStyle rectangle
+
+actor "HR User" as HR
+actor "System Admin" as SA
+
+rectangle "IOhire - Sprint 1" {
+  usecase "Authenticate\n(JWT Login)" as UC_Login
+  usecase "Create Job Posting" as UC_CreateJob
+  usecase "Edit Job Posting" as UC_EditJob
+  usecase "Change Job Status\n(draft/open/closed)" as UC_ChangeStatus
+  usecase "Delete Job Posting" as UC_DeleteJob
+  usecase "View Metadata\n(status enums)" as UC_Meta
+}
+
+HR --> UC_Login
+HR --> UC_CreateJob
+HR --> UC_EditJob
+HR --> UC_ChangeStatus
+HR --> UC_DeleteJob
+HR --> UC_Meta
+
+SA --> UC_Meta
+
+UC_CreateJob ..> UC_Login : <<include>>
+UC_EditJob ..> UC_Login : <<include>>
+UC_ChangeStatus ..> UC_Login : <<include>>
+UC_DeleteJob ..> UC_Login : <<include>>
+
+@enduml
+

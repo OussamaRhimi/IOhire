@@ -8,6 +8,9 @@ import { factories } from '@strapi/strapi';
 import { processCandidate } from '../../../utils/candidate-ai';
 import { renderCvMarkdownToPdf } from '../../../utils/cv-pdf';
 import { renderHtmlToPdf } from '../../../utils/html-pdf';
+import { parseJsonWithRecovery } from '../../../utils/json';
+import { ollamaChat } from '../../../utils/ollama';
+import { extractTextFromResume } from '../../../utils/resume-text';
 import {
   isCvTemplateKey,
   listCvTemplates,
@@ -66,6 +69,100 @@ function resolveTemplateKey(candidateTemplateKey: unknown, requestedTemplateKey:
   if (isCvTemplateKey(requestedTemplateKey)) return requestedTemplateKey;
   if (isCvTemplateKey(candidateTemplateKey)) return candidateTemplateKey;
   return 'standard';
+}
+
+const RECOMMENDATION_PARSER_SYSTEM_PROMPT =
+  'Extract skills from the provided resume text. Return ONLY valid JSON with this shape: ' +
+  '{ "skills": string[] }. ' +
+  'Rules: include technical tools, frameworks, programming languages, cloud/devops skills, and professional domains. ' +
+  'Deduplicate, keep concise labels, do not include explanations.';
+
+function truncateForModel(text: string, maxChars: number): string {
+  const raw = String(text ?? '');
+  if (raw.length <= maxChars) return raw;
+  const head = raw.slice(0, Math.floor(maxChars * 0.7));
+  const tail = raw.slice(raw.length - Math.floor(maxChars * 0.2));
+  return `${head}\n\n[...truncated...]\n\n${tail}`;
+}
+
+function normalizeSkill(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[\u2010-\u2015]/g, '-')
+    .replace(/[^a-z0-9+#.\s-]/g, ' ')
+    .replace(/[._-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function dedupeSkills(skills: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of skills) {
+    const skill = typeof raw === 'string' ? raw.trim() : '';
+    if (!skill) continue;
+    const key = normalizeSkill(skill);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(skill);
+  }
+  return out;
+}
+
+function parseSkillListFromModel(raw: string): string[] {
+  const parsed = parseJsonWithRecovery<any>(raw);
+  if (!parsed.ok) return [];
+
+  const value = parsed.value;
+  if (Array.isArray(value)) return dedupeSkills(value.filter((v) => typeof v === 'string'));
+  if (value && typeof value === 'object') {
+    const direct = toStringArray((value as any).skills);
+    if (direct.length) return dedupeSkills(direct);
+
+    const nested = toStringArray((value as any).data?.skills);
+    if (nested.length) return dedupeSkills(nested);
+  }
+  return [];
+}
+
+function extractSkillsHeuristically(cvText: string, knownSkills: string[]): string[] {
+  const textNorm = normalizeSkill(cvText);
+  const textCompact = textNorm.replace(/\s+/g, '');
+  if (!textNorm) return [];
+
+  const matched: string[] = [];
+  for (const skill of knownSkills) {
+    const normalized = normalizeSkill(skill);
+    if (!normalized) continue;
+
+    const compact = normalized.replace(/\s+/g, '');
+    const hasMatch =
+      normalized.includes(' ') || normalized.length >= 5
+        ? textNorm.includes(normalized)
+        : compact && textCompact.includes(compact);
+
+    if (hasMatch) matched.push(skill);
+  }
+  return dedupeSkills(matched);
+}
+
+function hasSkillMatch(requiredSkill: string, candidateNormalized: string[]): boolean {
+  const required = normalizeSkill(requiredSkill);
+  if (!required) return false;
+
+  for (const skill of candidateNormalized) {
+    if (!skill) continue;
+    if (skill === required) return true;
+
+    // Allow broad matching for terms like "react" vs "react js".
+    if (required.length >= 4 && (skill.includes(required) || required.includes(skill))) return true;
+  }
+  return false;
+}
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value * 100) / 100));
 }
 
 export default factories.createCoreController('api::candidate.candidate', ({ strapi }) => ({
@@ -293,6 +390,143 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
 
     ctx.status = 201;
     ctx.body = { id: candidate.id, token: publicToken };
+  },
+
+  async publicRecommendJobPostings(ctx) {
+    const files = ((ctx.request as any).files ?? {}) as Record<string, unknown>;
+    const incoming = getSingleFile((files as any).resume ?? (files as any).file ?? (files as any).files);
+    if (!incoming?.filepath) return ctx.badRequest('Resume file is required.');
+
+    const allowedMimes = new Set([
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+    ]);
+
+    const fileMime = String(incoming.mimetype ?? incoming.mime ?? '')
+      .toLowerCase()
+      .trim();
+    if (fileMime && !allowedMimes.has(fileMime)) {
+      return ctx.badRequest(`Unsupported file type: ${incoming.mimetype ?? incoming.mime}`);
+    }
+
+    const maxBytes = Number(process.env.MAX_RESUME_BYTES ?? 20 * 1024 * 1024);
+    const incomingSize = typeof incoming.size === 'number' ? incoming.size : Number(incoming.size);
+    if (Number.isFinite(maxBytes) && Number.isFinite(incomingSize) && incomingSize > maxBytes) {
+      return ctx.badRequest(`File too large. Max ${maxBytes} bytes.`);
+    }
+
+    const openJobs = (await strapi.entityService.findMany('api::job-posting.job-posting', {
+      filters: { status: 'open' } as any,
+      fields: ['title', 'description', 'requirements'] as any,
+      sort: { createdAt: 'desc' } as any,
+      limit: 200,
+    })) as any[];
+
+    if (!openJobs?.length) {
+      ctx.body = {
+        skills: [],
+        totalConsidered: 0,
+        top: [],
+        message: 'No matching job is available at the moment.',
+      };
+      return;
+    }
+
+    let cvText = '';
+    try {
+      cvText = await extractTextFromResume({
+        filepath: incoming.filepath,
+        mimetype: incoming.mimetype,
+        mime: incoming.mime,
+        ext: incoming.ext,
+        name: incoming.name,
+        originalFilename: incoming.originalFilename,
+      });
+    } catch (error: any) {
+      return ctx.badRequest(`Failed to read resume: ${error?.message ?? error}`);
+    }
+
+    if (!cvText || !cvText.trim()) return ctx.badRequest('No readable text found in resume.');
+
+    const knownSkills = dedupeSkills(
+      openJobs.flatMap((job) => {
+        const requirements = (job?.requirements ?? {}) as any;
+        return [...toStringArray(requirements?.skillsRequired), ...toStringArray(requirements?.skillsNiceToHave)];
+      })
+    );
+
+    const maxCvChars = Number(process.env.CANDIDATE_AI_MAX_CV_CHARS ?? 18000);
+    const cvForModel =
+      Number.isFinite(maxCvChars) && maxCvChars > 1000 ? truncateForModel(cvText, maxCvChars) : String(cvText ?? '');
+
+    let aiSkills: string[] = [];
+    try {
+      const raw = await ollamaChat({
+        system: RECOMMENDATION_PARSER_SYSTEM_PROMPT,
+        user:
+          `Resume text:\n${cvForModel}\n\n` +
+          `Known skills from open postings (use when present): ${JSON.stringify(knownSkills)}`,
+        format: 'json',
+        timeoutMs: Number(process.env.CANDIDATE_AI_RECOMMEND_TIMEOUT_MS ?? 120_000),
+        ollamaOptions: { num_predict: Number(process.env.OLLAMA_NUM_PREDICT_PARSE ?? 900) },
+      });
+      aiSkills = parseSkillListFromModel(raw);
+    } catch (error: any) {
+      strapi?.log?.warn?.(
+        `[candidate-ai] recommendation skill extraction failed: ${error?.message ?? error}`
+      );
+    }
+
+    const fallbackSkills = extractSkillsHeuristically(cvText, knownSkills);
+    const candidateSkills = dedupeSkills([...aiSkills, ...fallbackSkills]);
+    const candidateNormalized = candidateSkills.map(normalizeSkill).filter(Boolean);
+
+    const ranked = openJobs
+      .map((job) => {
+        const requirements = (job?.requirements ?? {}) as any;
+        const required = dedupeSkills(toStringArray(requirements?.skillsRequired));
+        const niceToHave = dedupeSkills(toStringArray(requirements?.skillsNiceToHave));
+
+        const matchedRequired = required.filter((s) => hasSkillMatch(s, candidateNormalized));
+        const matchedNiceToHave = niceToHave.filter((s) => hasSkillMatch(s, candidateNormalized));
+
+        const missingRequired = required.filter((s) => !matchedRequired.includes(s));
+        const missingNiceToHave = niceToHave.filter((s) => !matchedNiceToHave.includes(s));
+
+        const requiredCoverage = required.length > 0 ? matchedRequired.length / required.length : 0;
+        const niceCoverage = niceToHave.length > 0 ? matchedNiceToHave.length / niceToHave.length : 0;
+        const compatibility = clampPercent(requiredCoverage * 85 + niceCoverage * 15);
+
+        return {
+          id: typeof job?.id === 'number' ? job.id : Number(job?.id),
+          title: typeof job?.title === 'string' ? job.title : null,
+          description: typeof job?.description === 'string' ? job.description : null,
+          requirements: requirements ?? null,
+          compatibility,
+          matchedRequired,
+          missingRequired,
+          matchedNiceToHave,
+          missingNiceToHave,
+        };
+      })
+      .filter((job) => Number.isFinite(job.id))
+      .filter((job) => job.compatibility > 0)
+      .sort((a, b) => {
+        if (b.compatibility !== a.compatibility) return b.compatibility - a.compatibility;
+        if (b.matchedRequired.length !== a.matchedRequired.length) return b.matchedRequired.length - a.matchedRequired.length;
+        if (b.matchedNiceToHave.length !== a.matchedNiceToHave.length) {
+          return b.matchedNiceToHave.length - a.matchedNiceToHave.length;
+        }
+        return a.id - b.id;
+      });
+
+    ctx.body = {
+      skills: candidateSkills.slice(0, 40),
+      totalConsidered: openJobs.length,
+      top: ranked.slice(0, 3),
+      message: ranked.length === 0 ? 'No matching job is available at the moment.' : null,
+    };
   },
 
   async publicStatus(ctx) {

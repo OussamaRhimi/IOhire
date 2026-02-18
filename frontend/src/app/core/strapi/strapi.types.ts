@@ -24,6 +24,25 @@ export type PublicJobPosting = {
   requirements: JobRequirements | null;
 };
 
+export type PublicJobRecommendation = {
+  id: number;
+  title: string | null;
+  description: string | null;
+  requirements: JobRequirements | null;
+  compatibility: number;
+  matchedRequired: string[];
+  missingRequired: string[];
+  matchedNiceToHave: string[];
+  missingNiceToHave: string[];
+};
+
+export type PublicRecommendationResponse = {
+  skills: string[];
+  totalConsidered: number;
+  top: PublicJobRecommendation[];
+  message: string | null;
+};
+
 export type PublicApplicationSubmitResponse = { id: number; token: string };
 
 export type PublicApplicationStatus = {

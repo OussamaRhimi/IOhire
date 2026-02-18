@@ -5,6 +5,8 @@ services:
       POSTGRES_DB: strapi
       POSTGRES_USER: strapi
       POSTGRES_PASSWORD: strapi
+    ports:
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -45,3 +47,4 @@ volumes:
 networks:
   cv-net:
     driver: bridge
+    

@@ -1,145 +1,282 @@
-<section class="container portal-page">
-  <div class="card portal-hero">
-    <div class="portal-hero__title">
-      <span class="portal-hero__icon"><lucide-icon [img]="iconSparkles" [size]="16" /></span>
-      <h1>Candidate Portal</h1>
-    </div>
-    <p class="muted">Choose a role and submit your CV in a single streamlined flow.</p>
-
+<section class="apply-modern">
+  <div class="apply-modern__bg"></div>
+  <div class="container apply-modern__container">
     @if (loading()) {
-      <div class="skeleton" style="height: 16px; width: 260px"></div>
-      <div class="skeleton" style="height: 40px; width: 100%; margin-top: 12px"></div>
-      <div class="skeleton" style="height: 40px; width: 100%; margin-top: 12px"></div>
+      <div class="card apply-modern__card">
+        <div class="skeleton" style="height: 28px; width: 210px"></div>
+        <div class="skeleton" style="height: 18px; width: 360px; margin-top: 10px"></div>
+        <div class="skeleton" style="height: 130px; width: 100%; margin-top: 16px"></div>
+      </div>
+    } @else if (submitResult()) {
+      <div class="apply-success">
+        <div class="card apply-success__card">
+          <div class="apply-success__icon">
+            <lucide-icon [img]="iconCheck" [size]="34" />
+          </div>
+          <h1>Application Submitted Successfully</h1>
+          <p class="muted">
+            Thank you for applying. Our HR team will review your CV and contact you with the next steps.
+          </p>
+
+          <div class="card apply-success__next">
+            <h2>What Happens Next?</h2>
+            <div class="apply-success__steps">
+              <div class="apply-success__step">
+                <span>1</span>
+                <div>
+                  <div class="strong">CV Parsing</div>
+                  <div class="muted small">Your resume is extracted and structured automatically.</div>
+                </div>
+              </div>
+              <div class="apply-success__step">
+                <span>2</span>
+                <div>
+                  <div class="strong">Automated Evaluation</div>
+                  <div class="muted small">Compatibility is scored against open position requirements.</div>
+                </div>
+              </div>
+              <div class="apply-success__step">
+                <span>3</span>
+                <div>
+                  <div class="strong">HR Review</div>
+                  <div class="muted small">A recruiter checks your profile and follows up.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="apply-success__token">
+            <div class="small muted">Tracking token</div>
+            <div class="token">{{ submitResult()?.token }}</div>
+          </div>
+
+          <div class="actions apply-success__actions">
+            <button class="btn btn--primary" type="button" (click)="goTrack()">
+              <lucide-icon [img]="iconSearch" [size]="14" />
+              <span>Track Application</span>
+            </button>
+            <button class="btn btn--ghost" type="button" (click)="submitAnother()">
+              Submit another application
+            </button>
+          </div>
+        </div>
+      </div>
     } @else {
+      <div class="apply-modern__hero">
+        <div class="apply-modern__hero-icon">
+          <lucide-icon [img]="iconSparkles" [size]="24" />
+        </div>
+        <h1>Candidate Portal</h1>
+        <p>Submit your CV and apply to open positions in one modern flow.</p>
+      </div>
+
       @if (error()) {
         <div class="alert alert--error">{{ error() }}</div>
       }
 
       @if (jobs().length === 0) {
-        <div class="alert">No open job postings yet. Please check back later.</div>
-      } @else if (!selectedJob()) {
-        <div class="job-grid" style="margin-top: 14px">
-          @for (job of jobs(); track job.id) {
-            <div class="card job-card portal-card">
-              <div class="header-row">
-                <div class="truncate">
-                  <div class="strong" style="font-size: 18px">
-                    <span class="portal-inline-icon"><lucide-icon [img]="iconBriefcase" [size]="14" /></span>
-                    {{ job.title || ('Job #' + job.id) }}
-                  </div>
-                  <div class="muted small truncate">Open role</div>
-                </div>
-                <div class="actions actions--right">
-                  <button class="btn btn--primary" type="button" (click)="chooseJob(job)">
-                    <lucide-icon [img]="iconArrowRight" [size]="14" />
-                    <span>Apply</span>
-                  </button>
-                </div>
-              </div>
-
-              @if (job.description) {
-                <div class="job-desc" style="margin-top: 10px">
-                  <div class="job-desc__label">Description</div>
-                  <div class="job-desc__text">{{ job.description }}</div>
-                </div>
-              }
-
-              @if ((job.requirements?.skillsRequired?.length ?? 0) > 0 || (job.requirements?.skillsNiceToHave?.length ?? 0) > 0) {
-                <div class="job-card__skills" style="margin-top: 12px">
-                  @for (s of (job.requirements?.skillsRequired || []); track s) {
-                    <span class="skill-dot" title="Required">{{ s }}</span>
-                  }
-                  @for (s of (job.requirements?.skillsNiceToHave || []); track s) {
-                    <span class="skill-dot skill-dot--soft" title="Nice to have">{{ s }}</span>
-                  }
-                </div>
-              }
-            </div>
-          }
+        <div class="card apply-modern__card">
+          <div class="alert">No open job postings yet. Please check back later.</div>
         </div>
+      } @else if (!selectedJob()) {
+        <section class="card apply-modern__card">
+          <div class="apply-modern__section-head">
+            <h2>
+              <lucide-icon [img]="iconBriefcase" [size]="18" />
+              <span>Open Positions</span>
+            </h2>
+            <p class="muted small">Step 1 of 2: pick a posting to continue.</p>
+          </div>
+          <div class="apply-modern__jobs">
+            @for (job of jobs(); track job.id) {
+              <button type="button" class="apply-modern__job" (click)="chooseJob(job)">
+                <div class="strong">{{ job.title || ('Job #' + job.id) }}</div>
+                <div class="muted small">Open role</div>
+
+                @if (job.description) {
+                  <p class="apply-modern__job-desc">{{ job.description }}</p>
+                }
+
+                @if ((job.requirements?.skillsRequired?.length ?? 0) > 0 || (job.requirements?.skillsNiceToHave?.length ?? 0) > 0) {
+                  <div class="apply-modern__skills">
+                    @for (s of (job.requirements?.skillsRequired || []); track s) {
+                      <span class="apply-modern__skill" title="Required">{{ s }}</span>
+                    }
+                    @for (s of (job.requirements?.skillsNiceToHave || []); track s) {
+                      <span class="apply-modern__skill apply-modern__skill--soft" title="Nice to have">{{ s }}</span>
+                    }
+                  </div>
+                }
+              </button>
+            }
+          </div>
+        </section>
       } @else {
-        <div class="card portal-card" style="margin-top: 14px">
-          <div class="header-row">
-            <div class="truncate">
-              <div class="strong" style="font-size: 18px">{{ selectedJob()?.title || ('Job #' + selectedJob()?.id) }}</div>
-              <div class="muted small truncate">{{ selectedJob()?.description || '' }}</div>
-            </div>
-            <div class="actions actions--right">
-              <button class="btn btn--ghost" type="button" (click)="backToJobs()">Change job</button>
-            </div>
+        <form class="card apply-modern__card apply-modern__form" [formGroup]="form" (ngSubmit)="submit()">
+          <div class="apply-modern__section-head">
+            <h2>Submit Your Application</h2>
+            <button class="btn btn--ghost btn--sm" type="button" (click)="backToJobs()">Change Posting</button>
           </div>
 
-          @if (
-            (selectedJob()?.requirements?.skillsRequired?.length ?? 0) > 0 ||
-            (selectedJob()?.requirements?.skillsNiceToHave?.length ?? 0) > 0
-          ) {
-            <div class="job-card__skills" style="margin-top: 12px">
-              @for (s of (selectedJob()?.requirements?.skillsRequired || []); track s) {
-                <span class="skill-dot" title="Required">{{ s }}</span>
-              }
-              @for (s of (selectedJob()?.requirements?.skillsNiceToHave || []); track s) {
-                <span class="skill-dot skill-dot--soft" title="Nice to have">{{ s }}</span>
+          <section class="apply-modern__selected-job">
+            <div class="strong">{{ selectedJob()?.title || ('Job #' + selectedJob()?.id) }}</div>
+            @if (selectedJob()?.description) {
+              <p class="muted small">{{ selectedJob()?.description }}</p>
+            }
+            @if ((selectedJob()?.requirements?.skillsRequired?.length ?? 0) > 0 || (selectedJob()?.requirements?.skillsNiceToHave?.length ?? 0) > 0) {
+              <div class="apply-modern__skills">
+                @for (s of (selectedJob()?.requirements?.skillsRequired || []); track s) {
+                  <span class="apply-modern__skill" title="Required">{{ s }}</span>
+                }
+                @for (s of (selectedJob()?.requirements?.skillsNiceToHave || []); track s) {
+                  <span class="apply-modern__skill apply-modern__skill--soft" title="Nice to have">{{ s }}</span>
+                }
+              </div>
+            }
+          </section>
+
+          <section class="apply-modern__group">
+            <label class="apply-modern__label">Upload Your CV <span>*</span></label>
+            <input
+              #resumeInput
+              class="apply-modern__file-input"
+              type="file"
+              accept=".pdf,.docx,.txt,application/pdf"
+              (change)="onFileChange($event)"
+            />
+            <div
+              class="apply-modern__drop"
+              [class.is-active]="dragActive()"
+              [class.has-file]="hasFile()"
+              (click)="triggerFilePicker(resumeInput)"
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onDrop($event)"
+            >
+              <lucide-icon [img]="iconFileUp" [size]="36" />
+              @if (!hasFile()) {
+                <p><span>Click to upload</span> or drag and drop</p>
+                <div class="small muted">PDF, DOCX or TXT (max 20MB)</div>
+              } @else {
+                <div class="apply-modern__file-meta">
+                  <div class="strong truncate">{{ fileName() }}</div>
+                  <div class="small muted">{{ fileSizeLabel() }}</div>
+                </div>
+                <button
+                  class="btn btn--ghost btn--sm"
+                  type="button"
+                  (click)="clearFile(resumeInput); $event.stopPropagation()"
+                >
+                  <lucide-icon [img]="iconTrash" [size]="14" />
+                  <span>Remove</span>
+                </button>
               }
             </div>
-          }
+            @if (form.controls.resume.touched && form.controls.resume.invalid) {
+              <div class="field__hint field__hint--error">Resume file is required.</div>
+            }
+          </section>
 
-          <form [formGroup]="form" (ngSubmit)="submit()" class="form">
-            <div class="grid2">
+          <section class="apply-modern__group apply-modern__group--line">
+            <div class="apply-modern__section-head">
+              <h3>Personal Information</h3>
+            </div>
+            <div class="apply-modern__grid">
               <label class="field">
-                <span class="field__label">Full name (optional)</span>
-                <input class="input" formControlName="fullName" placeholder="Jane Doe" />
+                <span class="field__label">Full Name <span>*</span></span>
+                <div class="apply-modern__input-wrap">
+                  <lucide-icon [img]="iconUser" [size]="14" />
+                  <input class="input" formControlName="fullName" placeholder="John Doe" />
+                </div>
+                @if (form.controls.fullName.touched && form.controls.fullName.invalid) {
+                  <div class="field__hint field__hint--error">Full name is required.</div>
+                }
               </label>
 
               <label class="field">
-                <span class="field__label">Email (optional)</span>
-                <input class="input" formControlName="email" placeholder="jane@example.com" />
+                <span class="field__label">Email <span>*</span></span>
+                <div class="apply-modern__input-wrap">
+                  <lucide-icon [img]="iconMail" [size]="14" />
+                  <input class="input" formControlName="email" placeholder="john.doe@email.com" />
+                </div>
+                @if (form.controls.email.touched && form.controls.email.invalid) {
+                  <div class="field__hint field__hint--error">Valid email is required.</div>
+                }
+              </label>
+
+              <label class="field">
+                <span class="field__label">Phone Number</span>
+                <div class="apply-modern__input-wrap">
+                  <lucide-icon [img]="iconPhone" [size]="14" />
+                  <input class="input" formControlName="phone" placeholder="+1 (555) 123-4567" />
+                </div>
               </label>
             </div>
+          </section>
 
-            <label class="field">
-              <span class="field__label">Resume (PDF/DOCX/TXT)</span>
-              <input
-                class="input"
-                type="file"
-                (change)="onFileChange($event)"
-                accept=".pdf,.docx,.txt,application/pdf"
-              />
-              @if (form.controls.resume.touched && form.controls.resume.invalid) {
-                <div class="field__hint field__hint--error">Resume file is required.</div>
-              }
-            </label>
+          <section class="apply-modern__group apply-modern__group--line">
+            <div class="apply-modern__section-head">
+              <h3>Optional Information</h3>
+              <p class="muted small">(Helps us pre-fill your data)</p>
+            </div>
+            <div class="apply-modern__stack">
+              <label class="field">
+                <span class="field__label">LinkedIn Profile</span>
+                <div class="apply-modern__input-wrap">
+                  <lucide-icon [img]="iconLink" [size]="14" />
+                  <input class="input" formControlName="linkedin" placeholder="https://linkedin.com/in/..." />
+                </div>
+              </label>
+              <label class="field">
+                <span class="field__label">Portfolio / GitHub</span>
+                <div class="apply-modern__input-wrap">
+                  <lucide-icon [img]="iconLink" [size]="14" />
+                  <input class="input" formControlName="portfolio" placeholder="https://github.com/..." />
+                </div>
+              </label>
+              <label class="field">
+                <span class="field__label">Years of Experience</span>
+                <input class="input" type="number" min="0" formControlName="yearsExperience" placeholder="5" />
+              </label>
+              <label class="field">
+                <span class="field__label">Cover Letter / Additional Notes</span>
+                <textarea class="input" rows="4" formControlName="notes" placeholder="Tell us why you're interested..."></textarea>
+              </label>
+            </div>
+          </section>
 
+          <section class="apply-modern__consent">
             <label class="check">
               <input type="checkbox" formControlName="consent" />
-              <span>I consent to processing my resume for evaluation.</span>
+              <span>
+                I consent to the processing of my personal data in accordance with GDPR regulations and understand
+                my CV will be parsed for recruitment purposes.
+              </span>
             </label>
+            @if (form.controls.consent.touched && form.controls.consent.invalid) {
+              <div class="field__hint field__hint--error">Consent is required.</div>
+            }
+          </section>
 
-            <div class="actions">
-              <button class="btn btn--primary" type="submit" [disabled]="submitting()">
-                <lucide-icon [img]="iconUpload" [size]="14" />
-                @if (submitting()) { Submitting... } @else { Submit application }
-              </button>
-              <a class="btn btn--ghost" routerLink="/track">
-                <lucide-icon [img]="iconSearch" [size]="14" />
-                <span>I already have a token</span>
-              </a>
+          <button class="btn btn--primary apply-modern__submit" type="submit" [disabled]="submitting()">
+            @if (submitting()) { Submitting... } @else { Submit Application }
+          </button>
+
+          <div class="apply-modern__info">
+            <lucide-icon [img]="iconClock" [size]="16" />
+            <div>
+              <span class="strong">Processing time:</span>
+              Your CV is parsed within minutes. HR typically responds within 5-7 business days.
             </div>
-          </form>
-        </div>
-      }
-
-      @if (submitResult()) {
-        <div class="card card--success portal-card" style="margin-top: 16px">
-          <h2>Submitted</h2>
-          <p class="muted">Save this token to track your application:</p>
-          <div class="token">{{ submitResult()?.token }}</div>
-          <div class="actions">
-            <button class="btn btn--primary" type="button" (click)="goTrack()">
-              <lucide-icon [img]="iconCheck" [size]="14" />
-              <span>Track now</span>
-            </button>
           </div>
-        </div>
+
+          <div class="actions">
+            <a class="btn btn--ghost" routerLink="/track">
+              <lucide-icon [img]="iconSearch" [size]="14" />
+              <span>I already have a token</span>
+            </a>
+          </div>
+        </form>
       }
     }
   </div>

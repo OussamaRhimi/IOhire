@@ -1,0 +1,73 @@
+@startuml
+title Sprint 2 - Class Diagram (Public Application + HR Candidate Ops)
+skinparam classAttributeIconSize 0
+
+enum CandidateStatus {
+  new
+  processing
+  processed
+  reviewing
+  shortlisted
+  rejected
+  hired
+  error
+}
+
+class JobPosting {
+  +id: int
+  +title: string
+  +description: text
+  +requirements: json
+  +status: string
+}
+
+class ResumeFile {
+  +id: int
+  +name: string
+  +mime: string
+  +size: number
+  +url: string
+}
+
+class Candidate {
+  +id: int
+  +fullName: string
+  +email: string
+  +status: CandidateStatus
+  +publicToken: string
+  +consent: boolean
+  +consentAt: datetime
+  +retentionUntil: datetime
+  +hrNotes: text
+}
+
+class CandidateController {
+  +submitApplication()
+  +publicStatus(token)
+  +publicDelete(token)
+  +hrFindOne(id)
+  +downloadResume(id)
+}
+
+class CandidateService {
+  +createFromApplication(formData)
+  +findByPublicToken(token)
+  +updateStatus(id, status)
+  +saveNotes(id, notes)
+  +deleteWithResume(id)
+}
+
+class UploadService {
+  +upload(file)
+  +remove(fileId)
+}
+
+CandidateController --> CandidateService
+CandidateService --> UploadService
+CandidateService --> Candidate
+Candidate --> ResumeFile : owns >
+Candidate --> JobPosting : applies to >
+JobPosting "1" <-- "0..*" Candidate
+
+@enduml
+

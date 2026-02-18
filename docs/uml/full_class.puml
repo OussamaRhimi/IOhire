@@ -1,0 +1,201 @@
+@startuml
+title IOhire - University-Style Class Diagram (Conceptual)
+
+skinparam classAttributeIconSize 0
+left to right direction
+skinparam shadowing false
+
+'======================
+' Core actors
+'======================
+abstract class User {
+  +userId: int
+  +fullName: string
+  +email: string
+}
+
+class Candidate
+class HRUser {
+  +role: string
+}
+class Administrator
+
+User <|-- Candidate
+User <|-- HRUser
+HRUser <|-- Administrator
+
+'======================
+' Recruitment domain
+'======================
+class JobPosting {
+  +jobId: int
+  +title: string
+  +description: text
+  +status: JobPostingStatus
+  +createdAt: datetime
+  +updatedAt: datetime
+}
+
+class JobRequirement {
+  +skillsRequired: string[*]
+  +skillsNiceToHave: string[*]
+  +minYearsExperience: int
+  +notes: string
+}
+
+class CandidateApplication {
+  +applicationId: int
+  +publicToken: string
+  +consent: boolean
+  +consentAt: datetime
+  +retentionUntil: datetime
+  +status: ApplicationStatus
+  +score: decimal
+  +hrNotes: text
+  +createdAt: datetime
+  +updatedAt: datetime
+}
+
+class Resume {
+  +fileId: int
+  +fileName: string
+  +url: string
+  +mimeType: string
+  +sizeBytes: long
+}
+
+class ExtractedData {
+  +summary: string
+  +skills: string[*]
+  +languages: string[*]
+  +projects: string[*]
+  +missingFields: string[*]
+}
+
+class EvaluationReport {
+  +fitScore: decimal
+  +completenessScore: decimal
+  +totalScore: decimal
+  +missingSkills: string[*]
+  +missingFields: string[*]
+  +notes: string
+}
+
+class StandardizedCV {
+  +markdown: text
+  +templateKey: CvTemplateKey
+  +generatedAt: datetime
+}
+
+class CVTemplate {
+  +key: CvTemplateKey
+  +name: string
+  +description: string
+}
+
+Candidate "1" -- "0..*" CandidateApplication : submits
+JobPosting "1" -- "0..*" CandidateApplication : receives
+HRUser "1" -- "0..*" JobPosting : manages
+HRUser "1" -- "0..*" CandidateApplication : reviews
+
+JobPosting "1" *-- "1" JobRequirement
+CandidateApplication "1" *-- "1" Resume
+CandidateApplication "1" o-- "0..1" ExtractedData
+CandidateApplication "1" o-- "0..1" EvaluationReport
+CandidateApplication "1" o-- "0..1" StandardizedCV
+StandardizedCV --> CVTemplate : uses
+HRUser ..> CVTemplate : selects
+
+'======================
+' AI processing
+'======================
+class AIProcessor {
+  +processApplication(appId: int): void
+  +extractResumeText(resume: Resume): string
+  +parseCV(text: string): ExtractedData
+  +evaluateFit(data: ExtractedData, req: JobRequirement): EvaluationReport
+  +generateStandardCV(data: ExtractedData, template: CVTemplate): StandardizedCV
+}
+
+AIProcessor ..> Resume
+AIProcessor ..> JobRequirement
+AIProcessor ..> ExtractedData
+AIProcessor ..> EvaluationReport
+AIProcessor ..> StandardizedCV
+AIProcessor ..> CVTemplate
+AIProcessor ..> CandidateApplication : updates status/score
+
+'======================
+' Recommendation flow
+'======================
+class RecommendationRequest {
+  +resumeMimeType: string
+  +resumeSizeBytes: long
+}
+
+class SkillProfile {
+  +skills: string[*]
+  +source: string
+}
+
+class JobRecommendation {
+  +compatibility: decimal
+  +matchedRequired: string[*]
+  +missingRequired: string[*]
+  +matchedNiceToHave: string[*]
+  +missingNiceToHave: string[*]
+}
+
+class RecommendationEngine {
+  +extractSkills(req: RecommendationRequest): SkillProfile
+  +rankJobs(skills: SkillProfile, jobs: JobPosting[*]): JobRecommendation[*]
+  +topMatches(ranked: JobRecommendation[*]): JobRecommendation[*]
+}
+
+RecommendationEngine ..> RecommendationRequest
+RecommendationEngine ..> SkillProfile
+RecommendationEngine ..> JobPosting
+RecommendationEngine ..> JobRecommendation
+JobRecommendation --> JobPosting : targets
+Candidate ..> JobRecommendation : views top matches
+
+note right of RecommendationEngine
+  Stateless recommendation path:
+  upload CV -> extract skills -> rank open jobs.
+end note
+
+'======================
+' Enums
+'======================
+enum ApplicationStatus {
+  new
+  processing
+  processed
+  reviewing
+  shortlisted
+  rejected
+  hired
+  error
+}
+
+enum JobPostingStatus {
+  draft
+  open
+  closed
+}
+
+enum CvTemplateKey {
+  standard
+  experience_first
+  skills_first
+  compact
+  education_first
+  project_focus
+  sidebar_photo
+  accent_pink
+  teal_circle
+  navy_gold
+  sunset
+}
+
+@enduml

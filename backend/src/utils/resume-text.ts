@@ -5,28 +5,41 @@ import mammoth from 'mammoth';
 import { PDFParse } from 'pdf-parse';
 
 type UploadFileLike = {
-  url: string;
+  url?: string;
+  filepath?: string;
   mime?: string;
+  mimetype?: string;
   ext?: string;
   name?: string;
+  originalFilename?: string;
 };
 
 async function readFileBuffer(file: UploadFileLike): Promise<Buffer> {
-  if (/^https?:\/\//i.test(file.url)) {
-    const res = await fetch(file.url);
+  const filepath = typeof file.filepath === 'string' ? file.filepath.trim() : '';
+  if (filepath) return await fs.readFile(filepath);
+
+  const url = typeof file.url === 'string' ? file.url.trim() : '';
+  if (!url) throw new Error('Resume file is missing both url and filepath.');
+
+  if (/^https?:\/\//i.test(url)) {
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to fetch resume: ${res.status} ${res.statusText}`);
     const arrayBuffer = await res.arrayBuffer();
     return Buffer.from(arrayBuffer);
   }
 
-  const relativeUrl = file.url.startsWith('/') ? file.url.slice(1) : file.url;
+  const relativeUrl = url.startsWith('/') ? url.slice(1) : url;
   const filePath = path.join(process.cwd(), 'public', relativeUrl);
   return await fs.readFile(filePath);
 }
 
 export async function extractTextFromResume(file: UploadFileLike): Promise<string> {
-  const mime = file.mime?.toLowerCase() ?? '';
-  const ext = (file.ext ?? path.extname(file.url)).toLowerCase();
+  const mime = String(file.mime ?? file.mimetype ?? '')
+    .toLowerCase()
+    .trim();
+  const ext =
+    String(file.ext ?? '').toLowerCase().trim() ||
+    path.extname(String(file.url ?? file.name ?? file.originalFilename ?? file.filepath ?? '')).toLowerCase();
   const buffer = await readFileBuffer(file);
 
   if (mime.includes('pdf') || ext === '.pdf') {

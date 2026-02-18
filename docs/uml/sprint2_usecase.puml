@@ -1,0 +1,41 @@
+@startuml
+title Sprint 2 - Use Case Diagram (Public Application + HR Candidate Ops)
+left to right direction
+skinparam packageStyle rectangle
+
+actor Candidate
+actor "HR User" as HR
+
+rectangle "IOhire - Sprint 2" {
+  usecase "Browse Open Jobs" as UC_BrowseJobs
+  usecase "Submit Application" as UC_Submit
+  usecase "Upload Resume\n(PDF/DOCX/TXT)" as UC_UploadResume
+  usecase "Provide Consent" as UC_Consent
+  usecase "Track Application\n(by public token)" as UC_Track
+  usecase "Delete Application\n(self-service)" as UC_DeletePublic
+
+  usecase "List Candidates" as UC_ListCandidates
+  usecase "View Candidate Detail" as UC_ViewCandidate
+  usecase "Update Candidate Status" as UC_Status
+  usecase "Save HR Notes" as UC_Notes
+  usecase "Download Original Resume" as UC_DownloadResume
+}
+
+Candidate --> UC_BrowseJobs
+Candidate --> UC_Submit
+Candidate --> UC_Track
+Candidate --> UC_DeletePublic
+
+UC_Submit ..> UC_UploadResume : <<include>>
+UC_Submit ..> UC_Consent : <<include>>
+
+HR --> UC_ListCandidates
+HR --> UC_ViewCandidate
+HR --> UC_Status
+HR --> UC_Notes
+HR --> UC_DownloadResume
+
+UC_ViewCandidate ..> UC_ListCandidates : <<extend>>
+
+@enduml
+

@@ -1,0 +1,126 @@
+@startuml
+title IOhire - Global Use Case Diagram (Academic)
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor Candidate as A_Candidate
+actor "Recruiter (HR)" as A_HR
+actor Administrator as A_Admin
+actor "Background Scheduler" as A_Scheduler
+actor "AI Service (Ollama)" as A_AI
+actor DevOps as A_DevOps
+
+A_Admin --|> A_HR
+
+rectangle "IOhire System" {
+  package "Public Recruitment Flow" {
+    usecase "UC01 - View Open Job Postings" as UC01
+    usecase "UC02 - Submit Application" as UC02
+    usecase "UC03 - Track Application Status" as UC03
+    usecase "UC04 - Download Standardized CV (Public)" as UC04
+    usecase "UC05 - Delete Application" as UC05
+    usecase "UC06 - Upload Resume" as UC06
+    usecase "UC07 - Provide Consent" as UC07
+    usecase "UC08 - Request Job Recommendations from CV" as UC08
+    usecase "UC09 - View Top Recommended Jobs" as UC09
+  }
+
+  package "HR and Administration Flow" {
+    usecase "UC10 - Authenticate User" as UC10
+    usecase "UC11 - Manage Job Postings" as UC11
+    usecase "UC12 - Manage Candidates" as UC12
+    usecase "UC13 - Reprocess Candidate" as UC13
+    usecase "UC14 - Select CV Template" as UC14
+    usecase "UC15 - Download Original Resume" as UC15
+    usecase "UC16 - Download Standardized CV (HR)" as UC16
+    usecase "UC17 - View Analytics Dashboard" as UC17
+  }
+
+  package "Automated and AI Processing" {
+    usecase "UC20 - Process Candidate" as UC20
+    usecase "UC21 - Extract Resume Text" as UC21
+    usecase "UC22 - Parse CV to Structured Data" as UC22
+    usecase "UC23 - Evaluate Candidate Match" as UC23
+    usecase "UC24 - Generate Standardized CV Content" as UC24
+    usecase "UC25 - Render CV as PDF" as UC25
+    usecase "UC26 - Batch Process Pending Candidates" as UC26
+    usecase "UC27 - Mark Stuck Candidates as Error" as UC27
+    usecase "UC28 - Purge Expired Candidate Data" as UC28
+    usecase "UC29 - Extract Skills for Recommendation" as UC29
+    usecase "UC30 - Rank Open Jobs by Skill Compatibility" as UC30
+  }
+
+  package "Deployment and Configuration" {
+    usecase "UC40 - Configure Environment Variables" as UC40
+    usecase "UC41 - Deploy with Docker Compose" as UC41
+  }
+}
+
+A_Candidate --> UC01
+A_Candidate --> UC02
+A_Candidate --> UC03
+A_Candidate --> UC04
+A_Candidate --> UC05
+A_Candidate --> UC08
+
+A_HR --> UC10
+A_HR --> UC11
+A_HR --> UC12
+A_HR --> UC13
+A_HR --> UC14
+A_HR --> UC15
+A_HR --> UC16
+A_HR --> UC17
+
+A_Scheduler --> UC26
+A_Scheduler --> UC27
+A_Scheduler --> UC28
+
+A_AI --> UC22
+A_AI --> UC24
+A_AI --> UC29
+
+A_DevOps --> UC40
+A_DevOps --> UC41
+
+UC02 ..> UC06 : <<include>>
+UC02 ..> UC07 : <<include>>
+UC08 ..> UC06 : <<include>>
+UC08 ..> UC29 : <<include>>
+UC08 ..> UC30 : <<include>>
+UC08 ..> UC09 : <<include>>
+
+UC11 ..> UC10 : <<include>>
+UC12 ..> UC10 : <<include>>
+UC13 ..> UC10 : <<include>>
+UC14 ..> UC10 : <<include>>
+UC15 ..> UC10 : <<include>>
+UC16 ..> UC10 : <<include>>
+UC17 ..> UC10 : <<include>>
+
+UC13 ..> UC20 : <<include>>
+UC26 ..> UC20 : <<include>>
+UC20 ..> UC21 : <<include>>
+UC20 ..> UC22 : <<include>>
+UC20 ..> UC23 : <<include>>
+UC20 ..> UC24 : <<include>>
+
+UC04 ..> UC25 : <<include>>
+UC16 ..> UC25 : <<include>>
+UC41 ..> UC40 : <<include>>
+
+note right of UC20
+  Main asynchronous pipeline:
+  text extraction, parsing,
+  deterministic scoring,
+  standardized CV generation.
+end note
+
+note right of UC08
+  Recommendation flow:
+  resume upload, AI skill extraction,
+  and compatibility ranking over open jobs.
+end note
+
+@enduml

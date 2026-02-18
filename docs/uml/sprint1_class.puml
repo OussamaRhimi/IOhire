@@ -1,0 +1,60 @@
+@startuml
+title Sprint 1 - Class Diagram (Foundation, Auth, Job Management)
+skinparam classAttributeIconSize 0
+
+class HrUser {
+  +id: int
+  +email: string
+  +passwordHash: string
+  +role: string
+}
+
+enum JobStatus {
+  draft
+  open
+  closed
+}
+
+class JobPosting {
+  +id: int
+  +title: string
+  +description: text
+  +requirements: json
+  +status: JobStatus
+}
+
+class AuthController {
+  +login(identifier, password)
+}
+
+class AuthService {
+  +validateCredentials(identifier, password)
+  +issueJwt(user)
+}
+
+class JobPostingController {
+  +create(data)
+  +update(id, patch)
+  +delete(id)
+  +list()
+}
+
+class JobPostingService {
+  +create(data)
+  +update(id, patch)
+  +delete(id)
+  +setStatus(id, status)
+}
+
+class MetaController {
+  +getStatuses()
+}
+
+AuthController --> AuthService
+JobPostingController --> JobPostingService
+JobPostingService --> JobPosting
+AuthService --> HrUser
+MetaController --> JobPosting
+
+@enduml
+

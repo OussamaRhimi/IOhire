@@ -1,0 +1,142 @@
+<section class="container portal-page recommendation-page">
+  <div class="card portal-hero">
+    <div class="portal-hero__title">
+      <span class="portal-hero__icon"><lucide-icon [img]="iconSparkles" [size]="16" /></span>
+      <h1>AI Job Recommendation</h1>
+    </div>
+    <p class="muted">Upload your CV and get the best matching open job postings based on skill compatibility.</p>
+
+    @if (error()) {
+      <div class="alert alert--error">{{ error() }}</div>
+    }
+
+    <form class="form" [formGroup]="form" (ngSubmit)="recommend()">
+      <label class="field">
+        <span class="field__label">Resume (PDF/DOCX/TXT)</span>
+        <input
+          #resumeInput
+          class="recommend-upload__input"
+          type="file"
+          (change)="onFileChange($event)"
+          accept=".pdf,.docx,.txt,application/pdf"
+        />
+        <div
+          class="recommend-upload__drop"
+          [class.is-active]="dragActive()"
+          [class.has-file]="!!selectedFileName()"
+          (click)="triggerFilePicker(resumeInput)"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+        >
+          <lucide-icon [img]="iconUpload" [size]="30" />
+          @if (!selectedFileName()) {
+            <p><span>Click to upload</span> or drag and drop</p>
+            <div class="small muted">PDF, DOCX or TXT (max 20MB)</div>
+          } @else {
+            <div class="recommend-upload__meta">
+              <div class="strong truncate">{{ selectedFileName() }}</div>
+              <div class="small muted">{{ selectedFileSize() }}</div>
+            </div>
+            <button
+              class="btn btn--ghost btn--sm"
+              type="button"
+              (click)="clearFile(resumeInput); $event.stopPropagation()"
+            >
+              <lucide-icon [img]="iconTrash" [size]="14" />
+              <span>Remove</span>
+            </button>
+          }
+        </div>
+        @if (form.controls.resume.touched && form.controls.resume.invalid) {
+          <div class="field__hint field__hint--error">Resume file is required.</div>
+        }
+      </label>
+
+      <div class="actions">
+        <button class="btn btn--primary" type="submit" [disabled]="analyzing()">
+          <lucide-icon [img]="iconUpload" [size]="14" />
+          @if (analyzing()) { Analyzing CV... } @else { Find Top Matches }
+        </button>
+        <a class="btn btn--ghost" routerLink="/apply">
+          <lucide-icon [img]="iconBriefcase" [size]="14" />
+          <span>Browse jobs</span>
+        </a>
+      </div>
+    </form>
+
+    @if ((result()?.skills?.length ?? 0) > 0) {
+      <div style="margin-top: 14px">
+        <div class="muted small" style="margin-bottom: 8px">Detected skills</div>
+        <div class="candidate-skill-wrap">
+          @for (skill of result()?.skills || []; track skill) {
+            <span class="candidate-skill-chip">{{ skill }}</span>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</section>
+
+@if (modalOpen()) {
+  <div class="recommend-modal" (click)="closeModal()">
+    <div class="recommend-modal__backdrop"></div>
+    <section class="recommend-modal__dialog card portal-card" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="recommend-modal__head">
+        <div>
+          <div class="portal-hero__title">
+            <span class="portal-hero__icon"><lucide-icon [img]="iconBrain" [size]="16" /></span>
+            <h2>Top Job Matches</h2>
+          </div>
+          <p class="muted small">Ranked by compatibility with your CV skills.</p>
+        </div>
+        <button class="btn btn--ghost btn--sm" type="button" (click)="closeModal()">
+          <lucide-icon [img]="iconClose" [size]="14" />
+          <span>Close</span>
+        </button>
+      </div>
+
+      @if ((result()?.top?.length ?? 0) === 0) {
+        <div class="alert">{{ result()?.message || 'No matching job is available at the moment.' }}</div>
+      } @else {
+        <div class="recommend-results">
+          @for (job of result()?.top || []; track job.id) {
+            <article class="recommend-result">
+              <div class="recommend-result__head">
+                <div class="recommend-rank">#{{ $index + 1 }}</div>
+                <div class="truncate">
+                  <div class="strong">{{ job.title || ('Job #' + job.id) }}</div>
+                  <div class="muted small">Compatibility: {{ compatibilityLabel(job.compatibility) }}</div>
+                </div>
+              </div>
+
+              <div class="recommend-meter">
+                <span [style.width.%]="job.compatibility"></span>
+              </div>
+
+              @if (job.matchedRequired.length > 0) {
+                <div class="small muted" style="margin-top: 8px">Matched required skills</div>
+                <div class="candidate-skill-wrap" style="margin-top: 6px">
+                  @for (s of job.matchedRequired; track s) {
+                    <span class="candidate-skill-chip">{{ s }}</span>
+                  }
+                </div>
+              }
+
+              @if (job.missingRequired.length > 0) {
+                <div class="small muted" style="margin-top: 8px">
+                  Missing required:
+                  {{ job.missingRequired.join(', ') }}
+                </div>
+              }
+            </article>
+          }
+        </div>
+      }
+
+      <div class="actions" style="margin-top: 14px">
+        <a class="btn btn--primary" routerLink="/apply" (click)="closeModal()">Apply to a job</a>
+      </div>
+    </section>
+  </div>
+}

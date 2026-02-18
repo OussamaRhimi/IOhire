@@ -1,0 +1,43 @@
+.recommend-upload__input {
+  display: none;
+}
+
+.recommend-upload__drop {
+  border: 2px dashed color-mix(in srgb, var(--border-2) 70%, transparent);
+  border-radius: 16px;
+  padding: clamp(18px, 2.6vw, 30px);
+  text-align: center;
+  cursor: pointer;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  background: color-mix(in srgb, var(--panel) 86%, var(--panel-2) 14%);
+  transition: border-color 170ms ease, background-color 170ms ease, transform 170ms ease;
+}
+
+.recommend-upload__drop:hover,
+.recommend-upload__drop.is-active {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-2) 45%);
+  background: color-mix(in srgb, var(--accent-soft-bg) 40%, var(--panel) 60%);
+  transform: translateY(-1px);
+}
+
+.recommend-upload__drop.has-file {
+  border-style: solid;
+}
+
+.recommend-upload__drop p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.recommend-upload__drop p span {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.recommend-upload__meta {
+  display: grid;
+  gap: 2px;
+  max-width: 100%;
+}

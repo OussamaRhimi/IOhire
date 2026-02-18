@@ -7,6 +7,12 @@ export default {
       config: { auth: false },
     },
     {
+      method: 'POST',
+      path: '/public/recommendations',
+      handler: 'candidate.publicRecommendJobPostings',
+      config: { auth: false },
+    },
+    {
       method: 'GET',
       path: '/public/applications/:token',
       handler: 'candidate.publicStatus',

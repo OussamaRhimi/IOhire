@@ -10,6 +10,7 @@ import {
   CandidateStatus,
   CvTemplateMeta,
   PublicApplicationStatus,
+  PublicRecommendationResponse,
   PublicApplicationSubmitResponse,
   PublicJobPosting,
 } from './strapi.types';
@@ -102,6 +103,45 @@ export class StrapiApi {
     return await firstValueFrom(
       this.http.post<PublicApplicationSubmitResponse>('/api/public/applications', formData)
     );
+  }
+
+  async recommendJobPostings(resume: File): Promise<PublicRecommendationResponse> {
+    const formData = new FormData();
+    formData.append('resume', resume);
+
+    const res = await firstValueFrom(this.http.post<any>('/api/public/recommendations', formData));
+
+    const top = Array.isArray(res?.top) ? res.top : [];
+    return {
+      skills: Array.isArray(res?.skills) ? res.skills.filter((s: unknown) => typeof s === 'string') : [],
+      totalConsidered:
+        typeof res?.totalConsidered === 'number' && Number.isFinite(res.totalConsidered)
+          ? res.totalConsidered
+          : Number(res?.totalConsidered) || 0,
+      top: top.map((job: any) => ({
+        id: typeof job?.id === 'number' ? job.id : Number(job?.id),
+        title: typeof job?.title === 'string' ? job.title : null,
+        description: typeof job?.description === 'string' ? job.description : null,
+        requirements: (job?.requirements ?? null) as any,
+        compatibility:
+          typeof job?.compatibility === 'number' && Number.isFinite(job.compatibility)
+            ? job.compatibility
+            : Number(job?.compatibility) || 0,
+        matchedRequired: Array.isArray(job?.matchedRequired)
+          ? job.matchedRequired.filter((v: unknown) => typeof v === 'string')
+          : [],
+        missingRequired: Array.isArray(job?.missingRequired)
+          ? job.missingRequired.filter((v: unknown) => typeof v === 'string')
+          : [],
+        matchedNiceToHave: Array.isArray(job?.matchedNiceToHave)
+          ? job.matchedNiceToHave.filter((v: unknown) => typeof v === 'string')
+          : [],
+        missingNiceToHave: Array.isArray(job?.missingNiceToHave)
+          ? job.missingNiceToHave.filter((v: unknown) => typeof v === 'string')
+          : [],
+      })),
+      message: typeof res?.message === 'string' ? res.message : null,
+    };
   }
 
   async getApplicationStatus(token: string): Promise<PublicApplicationStatus> {

@@ -1,0 +1,116 @@
+@startuml
+title Sprint 3 - Class Diagram (AI Processing, Standardization, Recommendation)
+left to right direction
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+package "Entity and Value Objects" {
+  class Candidate <<entity>> {
+    +id: int
+    +status: string
+    +score: decimal
+    +cvTemplateKey: string
+    +extractedData: json
+    +standardizedCvMarkdown: text
+  }
+
+  class JobPosting <<entity>> {
+    +id: int
+    +title: string
+    +description: text
+    +requirements: json
+    +status: string
+  }
+
+  class JobRecommendation <<value object>> {
+    +compatibility: decimal
+    +matchedRequired: String[*]
+    +missingRequired: String[*]
+    +matchedNiceToHave: String[*]
+    +missingNiceToHave: String[*]
+  }
+
+  class RecommendationRequest <<value object>> {
+    +resumeMimeType: string
+    +resumeSizeBytes: long
+  }
+
+  class RecommendationResult <<value object>> {
+    +skills: String[*]
+    +totalConsidered: int
+    +message: string
+  }
+}
+
+package "Control Layer" {
+  class CandidateController <<control>> {
+    +submitApplication()
+    +publicRecommendJobPostings()
+    +hrReprocess(id)
+    +downloadStandardizedCvPdf(id)
+    +publicDownloadStandardizedCvPdf(token)
+  }
+}
+
+package "Service Layer" {
+  class CandidateAIWorker <<service>> {
+    +processCandidate(candidateId)
+  }
+
+  class RecommendationService <<service>> {
+    +extractSkills(cvText, knownSkills): String[*]
+    +rankOpenJobs(skills, openJobs): JobRecommendation[*]
+    +recommendFromResume(request): RecommendationResult
+  }
+
+  class ResumeTextExtractor <<service>> {
+    +extractTextFromResume(file): string
+  }
+
+  class OllamaClient <<gateway>> {
+    +chat(systemPrompt, userPrompt, format): string
+  }
+
+  class DeterministicEvaluator <<service>> {
+    +evaluate(requirements, parsedData): EvaluationResult
+  }
+
+  class CvTemplateService <<service>> {
+    +renderMarkdownFromTemplate(key, content): string
+    +renderHtmlFromTemplate(key, payload): string
+  }
+
+  class PdfRenderer <<service>> {
+    +renderCvMarkdownToPdf(markdown, contact): Buffer
+    +renderHtmlToPdf(html, title): Buffer
+  }
+
+  class JsonRecoveryService <<service>> {
+    +parseJsonWithRecovery(raw): object
+  }
+}
+
+CandidateController --> CandidateAIWorker
+CandidateController --> RecommendationService
+CandidateController --> PdfRenderer
+
+CandidateAIWorker --> ResumeTextExtractor
+CandidateAIWorker --> OllamaClient
+CandidateAIWorker --> DeterministicEvaluator
+CandidateAIWorker --> CvTemplateService
+CandidateAIWorker --> JsonRecoveryService
+CandidateAIWorker --> Candidate
+
+RecommendationService --> ResumeTextExtractor
+RecommendationService --> OllamaClient
+RecommendationService --> JsonRecoveryService
+RecommendationService --> JobPosting
+RecommendationService --> RecommendationRequest
+RecommendationService --> JobRecommendation
+RecommendationService --> RecommendationResult
+
+RecommendationResult "1" o-- "0..3" JobRecommendation : top >
+JobRecommendation "*" --> "1" JobPosting : ranks >
+
+@enduml

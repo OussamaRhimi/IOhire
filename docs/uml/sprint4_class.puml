@@ -1,0 +1,63 @@
+@startuml
+title Sprint 4 - Class Diagram (Analytics, Operations, Deployment)
+skinparam classAttributeIconSize 0
+
+class AdminAnalyticsPage {
+  +refresh()
+  +renderCharts()
+}
+
+class AnalyticsService {
+  +computeKpis(candidates, jobs): KpiResult
+  +buildChartDatasets(candidates, jobs): ChartData
+}
+
+class MetaController {
+  +get()
+}
+
+class CandidateWorkerJob {
+  +processNewCandidates()
+}
+
+class ProcessingWatchdogJob {
+  +markStuckAsError()
+}
+
+class CandidateRetentionJob {
+  +purgeExpiredCandidates()
+}
+
+class CandidateRepository {
+  +findNew(limit)
+  +findStuck(threshold)
+  +findExpired(now)
+  +updateStatus(id, status)
+  +delete(id)
+}
+
+class UploadService {
+  +findOne(fileId)
+  +remove(file)
+}
+
+class ComposeDeploymentProfile {
+  +services: postgres, ollama, strapi
+  +volumes: postgres-data, ollama-data, strapi-uploads
+}
+
+AdminAnalyticsPage --> AnalyticsService
+AdminAnalyticsPage --> MetaController
+AnalyticsService --> CandidateRepository
+
+CandidateWorkerJob --> CandidateRepository
+ProcessingWatchdogJob --> CandidateRepository
+CandidateRetentionJob --> CandidateRepository
+CandidateRetentionJob --> UploadService
+
+ComposeDeploymentProfile .. CandidateWorkerJob : runtime context
+ComposeDeploymentProfile .. ProcessingWatchdogJob : runtime context
+ComposeDeploymentProfile .. CandidateRetentionJob : runtime context
+
+@enduml
+

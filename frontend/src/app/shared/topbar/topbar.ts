@@ -35,6 +35,7 @@ export class Topbar {
     return [
       { label: 'Home', routerLink: '/home', exact: true },
       { label: 'Apply', routerLink: '/apply', exact: true },
+      { label: 'Recommendation', routerLink: '/recommendation', exact: true },
       { label: 'Track', routerLink: '/track' },
       ...(isHrAuthed
         ? [{ label: 'Admin', routerLink: '/admin' }]
@@ -43,7 +44,13 @@ export class Topbar {
   });
   readonly showPortalThemeToggle = computed(() => {
     const url = this.currentUrl();
-    return url.startsWith('/home') || url.startsWith('/apply') || url.startsWith('/track') || url === '/';
+    return (
+      url.startsWith('/home') ||
+      url.startsWith('/apply') ||
+      url.startsWith('/track') ||
+      url.startsWith('/recommendation') ||
+      url === '/'
+    );
   });
 
   ngOnInit() {

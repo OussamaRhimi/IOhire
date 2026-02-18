@@ -23,6 +23,12 @@ export const routes: Routes = [
         title: 'Track application',
         loadComponent: () => import('./pages/public/track-page/track-page').then((m) => m.TrackPage),
       },
+      {
+        path: 'recommendation',
+        title: 'Recommendation',
+        loadComponent: () =>
+          import('./pages/public/recommendation-page/recommendation-page').then((m) => m.RecommendationPage),
+      },
     ],
   },
   {

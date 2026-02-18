@@ -1,0 +1,38 @@
+@startuml
+title Sprint 4 - Use Case Diagram (Analytics, Operations, Deployment)
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Admin / HR Lead" as Admin
+actor "DevOps Engineer" as DevOps
+actor "Scheduler (Cron)" as Cron
+
+rectangle "IOhire - Sprint 4" {
+  usecase "View Analytics Dashboard" as UC_Dashboard
+  usecase "Review KPIs\n(total jobs, candidates,\navg score, processing time)" as UC_KPI
+  usecase "Review Charts\n(status, score histogram,\nsubmissions over time)" as UC_Charts
+  usecase "Monitor AI Pipeline Health" as UC_Monitor
+
+  usecase "Purge Expired Candidates" as UC_Retention
+  usecase "Mark Stuck Processing\nas Error" as UC_Watchdog
+  usecase "Process Pending Candidates\nin Batches" as UC_Worker
+
+  usecase "Deploy with Docker Compose" as UC_Deploy
+  usecase "Configure Environment\nVariables" as UC_Env
+}
+
+Admin --> UC_Dashboard
+Admin --> UC_Monitor
+UC_Dashboard ..> UC_KPI : <<include>>
+UC_Dashboard ..> UC_Charts : <<include>>
+
+Cron --> UC_Retention
+Cron --> UC_Watchdog
+Cron --> UC_Worker
+
+DevOps --> UC_Deploy
+DevOps --> UC_Env
+UC_Deploy ..> UC_Env : <<include>>
+
+@enduml
+

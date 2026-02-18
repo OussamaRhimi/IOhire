@@ -1,0 +1,65 @@
+@startuml
+title Sprint 3 - Use Case Diagram (AI Processing, Standardization, Recommendation)
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor Candidate as A_Candidate
+actor "HR User" as A_HR
+actor "AI Engine (Ollama)" as A_AI
+
+rectangle "IOhire - Sprint 3" {
+  package "AI Candidate Processing" {
+    usecase "UC31 - Auto-process New Candidate" as UC31
+    usecase "UC32 - Reprocess Candidate" as UC32
+    usecase "UC33 - Extract Resume Text" as UC33
+    usecase "UC34 - Parse CV to Structured JSON" as UC34
+    usecase "UC35 - Evaluate Match Score" as UC35
+    usecase "UC36 - Generate Standardized CV" as UC36
+  }
+
+  package "Template and PDF Output" {
+    usecase "UC37 - Select CV Template" as UC37
+    usecase "UC38 - Download Standardized CV PDF (HR)" as UC38
+    usecase "UC39 - Download Standardized CV PDF (Public Token)" as UC39
+  }
+
+  package "Public Recommendation Flow" {
+    usecase "UC40 - Request Job Recommendations from CV" as UC40
+    usecase "UC41 - Extract Candidate Skills for Recommendation" as UC41
+    usecase "UC42 - Rank Open Jobs by Compatibility" as UC42
+    usecase "UC43 - Return Top Recommended Jobs" as UC43
+  }
+}
+
+A_HR --> UC32
+A_HR --> UC37
+A_HR --> UC38
+
+A_Candidate --> UC39
+A_Candidate --> UC40
+
+UC31 ..> UC33 : <<include>>
+UC31 ..> UC34 : <<include>>
+UC31 ..> UC35 : <<include>>
+UC31 ..> UC36 : <<include>>
+
+UC32 ..> UC31 : <<include>>
+UC38 ..> UC36 : <<include>>
+UC39 ..> UC36 : <<include>>
+
+UC40 ..> UC41 : <<include>>
+UC40 ..> UC42 : <<include>>
+UC40 ..> UC43 : <<include>>
+UC40 ..> UC33 : <<include>>
+
+A_AI --> UC34
+A_AI --> UC36
+A_AI --> UC41
+
+note right of UC40
+  Stateless recommendation path:
+  CV upload -> skill extraction -> job ranking.
+end note
+
+@enduml

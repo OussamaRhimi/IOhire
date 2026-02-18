@@ -1,0 +1,743 @@
+\documentclass[12pt,a4paper,oneside]{report}
+
+% ---------------------------------------------------------
+% Packages
+% ---------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{float}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{hyperref}
+
+\geometry{hmargin=2.5cm,vmargin=2.5cm}
+\onehalfspacing
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
+\setlist[itemize]{leftmargin=2em}
+\setlist[enumerate]{leftmargin=2em}
+
+\definecolor{accent}{RGB}{16,54,92}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accent,
+    urlcolor=accent,
+    citecolor=accent,
+    pdftitle={IOhire: AI-driven Dockerized Recruitment Platform},
+    pdfauthor={Oussama Rhimi}
+}
+
+\titleformat{\chapter}[display]
+  {\bfseries\Large}
+  {\filright\color{accent}\Large\chaptername\ \thechapter}
+  {1ex}
+  {\titlerule\vspace{1ex}\filright}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{IOhire Internship Report}
+\fancyhead[R]{\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ---------------------------------------------------------
+% Metadata
+% ---------------------------------------------------------
+\title{\textbf{IOhire: AI-driven Dockerized Recruitment Platform}}
+\author{Oussama Rhimi}
+\date{\today}
+
+\begin{document}
+
+% ---------------------------------------------------------
+% Cover Page
+% ---------------------------------------------------------
+\begin{titlepage}
+    \centering
+    {\Large Ministry of Higher Education and Scientific Research\par}
+    {\large Higher Institute of Technological Studies of Sfax\par}
+    \vspace{1.2cm}
+
+    \IfFileExists{frontend/public/iohire-logo.png}{
+        \includegraphics[width=0.24\textwidth]{frontend/public/iohire-logo.png}\par
+        \vspace{0.8cm}
+    }{
+        \vspace{2cm}
+    }
+
+    {\Huge\bfseries Internship Report\par}
+    \vspace{0.6cm}
+    {\LARGE\bfseries IOhire: AI-driven Dockerized Recruitment Platform\par}
+    \vspace{1.2cm}
+
+    {\large Prepared by\par}
+    {\Large\bfseries Oussama Rhimi\par}
+    \vspace{0.7cm}
+    {\large Host company: \textbf{IOVISION}\par}
+    \vspace{0.7cm}
+    {\large Academic supervisor: \textbf{Mr. Souhail Smaoui}\par}
+    {\large Company supervisor: \textbf{Mr. Ilyes Bahloul}\par}
+    \vspace{1.4cm}
+
+    {\large Academic year: 2025--2026\par}
+    {\large Date: \today\par}
+
+    \vfill
+    {\large Computer Science Department\par}
+\end{titlepage}
+
+% ---------------------------------------------------------
+% Front Matter
+% ---------------------------------------------------------
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+\chapter*{Dedication}
+\addcontentsline{toc}{chapter}{Dedication}
+This work is dedicated to my parents, my sisters, and my grandmother.
+
+To my parents: thank you for your sacrifices, your patience, and your constant support throughout my studies. Your trust gave me the strength to move forward.
+
+To my sisters: thank you for your kindness, your encouragement, and your positive energy.
+
+To my grandmother: your memory remains with me every day. Thank you for your love, your wisdom, and your values.
+
+To my extended family and friends: thank you for your support, your advice, and your confidence in me.
+
+\hfill \textbf{Oussama Rhimi}
+
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+I sincerely thank my academic supervisor at ISET Sfax, \textbf{Mr. Souhail Smaoui}, for his guidance, recommendations, and availability throughout this internship.
+
+I also express my gratitude to \textbf{Mr. Ilyes Bahloul}, my supervisor at \textbf{IOVISION}, for trusting me with the development of the IOhire platform and for his technical support during all project phases.
+
+I extend my thanks to the jury members for evaluating this work and to the teaching staff of the Computer Science department at ISET Sfax for the quality of the training provided.
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+This report presents the design and implementation of \textbf{IOhire}, an AI-assisted recruitment platform developed during my internship at IOVISION.
+
+The project combines:
+\begin{itemize}
+    \item an \textbf{Angular} frontend for public and HR interfaces,
+    \item a \textbf{Strapi/Node.js} backend for business logic and data management,
+    \item a \textbf{PostgreSQL} database,
+    \item an \textbf{Ollama-based AI pipeline} for CV parsing, deterministic scoring, and standardized CV generation,
+    \item and a \textbf{Docker Compose} environment for reproducible deployment.
+\end{itemize}
+
+The delivered solution covers the full recruitment workflow: job publication, candidate application and tracking, HR review, analytics dashboard, and controlled PDF export of standardized CVs. The platform also includes data retention and processing watchdog jobs to improve reliability and compliance.
+
+\tableofcontents
+\listoftables
+\listoffigures
+\clearpage
+
+% ---------------------------------------------------------
+% Main Matter
+% ---------------------------------------------------------
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% =========================================================
+\chapter{General Context of the Project}
+% =========================================================
+
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+Recruitment activities are often slowed down by repetitive manual work, scattered tools, and weak traceability. During my internship at IOVISION, I addressed this challenge by designing and implementing \textbf{IOhire}, an AI-assisted recruitment platform.
+
+This chapter introduces the host organization, the mission context, the methodology used, comparable solutions, and the existing process analysis that motivated the final proposal.
+
+\section{Host Organization}
+
+\subsection{Presentation}
+IOVISION is a software development company that has been evolving for over 10 years in the IT industry. Driven by innovation, it assists businesses and individuals in transforming their ideas into concrete, high-performance solutions. Specializing in the development of AI-based solutions, as well as the creation of web and mobile applications, IOVISION leverages its expertise to help clients improve their operations and foster growth.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\linewidth]{logo.png}
+    \caption{IOVision logo}
+    \label{fig:placeholder}
+\end{figure}
+
+\subsection{Business Areas and Expertise}
+IOVISION is an innovative company offering a comprehensive range of technological services to meet the diverse needs of its clients. The company’s primary services include:
+
+\begin{itemize}
+    \item \textbf{Web and Mobile Development:}
+    IOVISION provides web and mobile development services using the latest technologies such as \textbf{Angular, Ionic, and Spring Boot}. The company assists in defining clear use cases and delivering end-to-end web and mobile solutions, ensuring a precise and engaging user experience. These services include:
+    \begin{itemize}
+        \item Web Development.
+        \item Mobile Development.
+        \item E-Commerce Development.
+        \item Maintenance and Support.
+        \item Quality Assurance and Testing.
+    \end{itemize}
+
+    \item \textbf{Artificial Intelligence:}
+    IOVISION’s competent and dynamic AI team works closely with clients to understand their objectives and meet their specific needs by creating custom AI-based solutions. AI and Machine Learning (ML) services include:
+    \begin{itemize}
+        \item AI and ML Consulting.
+        \item Data Visualization.
+        \item Prediction and Decision Making.
+    \end{itemize}
+
+    \item \textbf{Big Data Analytics:}
+    IOVISION offers various Big Data services for businesses of all sizes, helping them use their data more effectively and strategically. These services include:
+    \begin{itemize}
+        \item Big Data Consulting.
+        \item General Data Analysis.
+        \item Big Data Assistance and Support.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Quality Commitment and Achievements}
+The organization emphasizes code quality, maintainability, and delivery reliability through structured development practices. Internship work was reviewed with this same standard: clear requirements, incremental milestones, and production-oriented implementation decisions.
+
+\section{Project Presentation}
+
+\subsection{Mission to Accomplish}
+The internship mission was to deliver a complete recruitment platform that:
+\begin{itemize}
+    \item centralizes job postings and candidate management,
+    \item automates CV processing and scoring with AI support,
+    \item provides secure interfaces for HR users and public applicants,
+    \item remains deployable in a reproducible Dockerized environment.
+\end{itemize}
+
+\subsection{IOhire Platform Overview}
+IOhire is organized around two major usage flows:
+\begin{itemize}
+    \item \textbf{Public flow:} job discovery, application submission, status tracking, and self-service data deletion.
+    \item \textbf{HR/Admin flow:} job and candidate management, AI reprocessing, analytics, and PDF export of standardized CVs.
+\end{itemize}
+
+\section{Methodology Used}
+
+\subsection{Agile Methods}
+Agile methodology is an iterative and incremental approach that emphasizes cross-functional collaboration, continuous adaptation to change, and the rapid delivery of high-quality products. It promotes a flexible and responsive approach to software development, allowing teams to quickly adapt to the changing needs of the project. Among the most well-known agile methodologies are Scrum, Kanban, Extreme Programming (XP), Lean Software Development, and Crystal.
+
+\subsection{Scrum Methodology}
+Scrum was adopted as the practical framework for organizing tasks, responsibilities, and delivery rhythm. The approach relies on clearly identified roles and artifacts.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{3.8cm}|p{9.2cm}|}
+\hline
+\textbf{Roles} & \textbf{Description} \\ \hline
+Product Owner & Defines product vision, prioritizes the backlog, and ensures that business needs are translated into valuable features. \\ \hline
+Scrum Master & Facilitates Scrum events, removes blockers, and ensures that Scrum principles are applied consistently. \\ \hline
+Development Team & Cross-functional team responsible for implementing, testing, and delivering a usable increment at the end of each sprint. \\ \hline
+\end{tabular}
+\caption{Scrum roles used in the project}
+\end{table}
+
+Regarding artefacts, Scrum utilizes the \textbf{Product Backlog}, a prioritized list of features to be developed; the \textbf{Sprint Backlog}, a selection of tasks to be completed during the sprint; and the \textbf{Product Increment}, a functional version of the product delivered at the end of each sprint.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{3.8cm}|p{9.2cm}|}
+\hline
+\textbf{Artifacts} & \textbf{Description} \\ \hline
+Product Backlog & Ordered list of features and improvements, prioritized by value and implementation constraints. \\ \hline
+Sprint Backlog & Subset of backlog items selected for one sprint, decomposed into actionable development tasks. \\ \hline
+Product Increment & Operational result produced at sprint end, integrating completed and validated functionality. \\ \hline
+\end{tabular}
+\caption{Scrum artifacts and their purpose}
+\end{table}
+
+In this context, sprint duration ranged from two to four weeks depending on scope and technical dependencies. This cadence improved visibility, enabled quicker adaptation to feedback, and supported continuous quality improvement through regular reviews and retrospectives.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{blog-scrum-process-opt.jpg}
+    \caption{scrum life cycle}
+    \label{fig:placeholder}
+\end{figure}
+
+\section{Similar Applications}
+
+\subsection{LinkedIn Talent Solutions}
+LinkedIn Talent Solutions provides candidate sourcing and recruitment workflow features in a large-scale ecosystem. Its strength is candidate reach and search capability, but it is less tailored to custom internal AI pipelines.
+
+\subsection{Lever ATS}
+Lever ATS offers applicant tracking, communication workflows, and recruitment analytics. It provides mature ATS functionality but may require additional integration work for custom CV standardization logic.
+
+\subsection{Comparative Table}
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{3.2cm}|p{3.6cm}|p{3.6cm}|p{3.4cm}|}
+\hline
+\textbf{Criterion} & \textbf{LinkedIn Talent} & \textbf{Lever ATS} & \textbf{IOhire (Target)} \\ \hline
+Custom AI scoring & Limited customization & Integration required & Native AI processing pipeline \\ \hline
+Candidate self-tracking & Partial & Limited & Token-based public tracking \\ \hline
+Standardized CV PDF & Not core focus & Not core focus & Built-in template-based export \\ \hline
+Dockerized self-hosting & Not primary model & Not primary model & Core deployment strategy \\ \hline
+\end{tabular}
+\caption{Comparison of similar solutions}
+\end{table}
+
+\section{Study of the Existing Process}
+
+\subsection{Previous Recruitment Workflow}
+Before IOhire, recruitment execution was fragmented across manual steps:
+\begin{itemize}
+    \item job descriptions and candidate files were managed in separate tools,
+    \item CV screening and comparison were mostly manual,
+    \item application progress was difficult to track consistently,
+    \item technical deployment setup was not standardized.
+\end{itemize}
+
+\subsection{Critical Review of the Existing Process}
+The main limitations were:
+\begin{itemize}
+    \item high review time due to repetitive manual filtering,
+    \item low process transparency for both HR staff and candidates,
+    \item weak standardization of candidate evaluation inputs,
+    \item reduced operational consistency across environments.
+\end{itemize}
+
+\subsection{Proposed Solutions}
+The proposed response was to build IOhire with:
+\begin{itemize}
+    \item a unified workflow from job publication to final decision,
+    \item AI-assisted parsing and deterministic candidate scoring,
+    \item standardized CV generation for fairer profile comparison,
+    \item secure APIs with clear role separation,
+    \item Docker-based deployment reproducibility.
+\end{itemize}
+
+\section{Conclusion}
+This chapter established the internship context, explained the selected methodology, and justified the project direction through benchmarking and existing process analysis.
+
+% =========================================================
+\chapter{Setting Up the Working Environment}
+% =========================================================
+
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+This chapter presents the technical foundation used to implement IOhire: architecture choices, technology stack, development environment, and iterative planning artifacts.
+
+\section{Architectural Specification}
+
+\subsection{Frontend Software Architecture}
+The frontend is developed with Angular standalone components and route-level organization:
+\begin{itemize}
+    \item \textbf{Public area:} home, apply, and track pages.
+    \item \textbf{HR area:} login and protected operational pages.
+    \item \textbf{Admin area:} analytics and management views.
+    \item \textbf{Core services:} API wrapper, auth guard/interceptor, and reusable utilities.
+\end{itemize}
+
+\subsection{Backend Software Architecture}
+The backend uses Strapi with custom controllers, services, and routes:
+\begin{itemize}
+    \item content types for \texttt{job-posting} and \texttt{candidate},
+    \item public routes for submission/tracking,
+    \item HR routes for management and reprocessing,
+    \item utility layer for AI, text extraction, JSON recovery, and PDF generation.
+\end{itemize}
+
+\subsection{Global Architecture}
+\begin{itemize}
+    \item \textbf{Angular frontend} communicates with backend REST APIs.
+    \item \textbf{Strapi backend} persists data in PostgreSQL and manages business rules.
+    \item \textbf{Ollama service} executes AI parsing and content generation.
+    \item \textbf{Docker Compose} orchestrates all services and shared networks/volumes.
+\end{itemize}
+
+\section{Technological Specification}
+
+\subsection{Hardware Environment}
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{4cm}|p{9cm}|}
+\hline
+\textbf{Item} & \textbf{Specification} \\ \hline
+Machine & Dell laptop \\ \hline
+CPU & Intel Core i5 \\ \hline
+RAM & 16 GB \\ \hline
+Storage & SSD \\ \hline
+\end{tabular}
+\caption{Hardware environment}
+\end{table}
+
+\subsection{Software Environment}
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{4cm}|p{9cm}|}
+\hline
+\textbf{Tool / Technology} & \textbf{Usage} \\ \hline
+Angular 21 & Public and HR frontend development \\ \hline
+Strapi 5 + Node.js & Backend APIs, content types, custom business logic \\ \hline
+PostgreSQL 16 & Persistent relational data storage \\ \hline
+Ollama + Llama 3.2 (3B) & CV parsing and standardized content generation \\ \hline
+Docker and Docker Compose & Multi-service deployment and portability \\ \hline
+GitHub & Version control and collaboration \\ \hline
+Postman & API testing and endpoint validation \\ \hline
+VS Code & Main development environment \\ \hline
+\end{tabular}
+\caption{Software environment}
+\end{table}
+
+\section{Iterative Planning}
+
+\subsection{Product Backlog}
+\begin{longtable}{|p{0.8cm}|p{8.4cm}|p{1.8cm}|p{2cm}|}
+\caption{Product backlog extract} \\ \hline
+\textbf{ID} & \textbf{User Story} & \textbf{Effort} & \textbf{Priority} \\ \hline
+US1 & As an HR user, I can authenticate and access protected pages. & High & Must \\ \hline
+US2 & As a candidate, I can apply for an open job with consent and resume upload. & High & Must \\ \hline
+US3 & As a candidate, I can track my application status with a token. & Medium & Must \\ \hline
+US4 & As an HR user, I can manage job postings and requirements. & Medium & Must \\ \hline
+US5 & As an HR user, I can manage candidates, status, and notes. & High & Must \\ \hline
+US6 & As an HR user, I can trigger AI reprocessing when needed. & Medium & Should \\ \hline
+US7 & As an HR user, I can preview and assign CV templates. & Medium & Should \\ \hline
+US8 & As an admin, I can view analytics and monitoring indicators. & High & Should \\ \hline
+\end{longtable}
+
+\subsection{Sprint Planning}
+\begin{longtable}{|p{0.8cm}|p{3.3cm}|p{7.2cm}|p{2.3cm}|}
+\caption{Sprint planning} \\ \hline
+\textbf{No.} & \textbf{Sprint} & \textbf{Scope} & \textbf{Schedule} \\ \hline
+0 & Setup and Foundation & Repository organization, Docker services, initial schemas, environment bootstrap. & 17/02--14/03 \\ \hline
+1 & Public Workflow & Public job listing, candidate apply flow, token tracking, base validation. & 17/03--17/04 \\ \hline
+2 & HR Management & Authentication, job and candidate operations, dashboard baseline. & 18/04--12/05 \\ \hline
+3 & AI and Standardization & CV parsing, deterministic scoring, template output, PDF generation. & 13/05--30/05 \\ \hline
+4 & Reliability and Finalization & Reprocess flow, cron worker, watchdog, retention purge, final hardening. & Final phase \\ \hline
+\end{longtable}
+
+\section{Conclusion}
+This chapter detailed the working environment and planning framework used to deliver IOhire. With architecture and tooling established, the following chapters focus on implementation details, validation, and deployment.
+
+% =========================================================
+\chapter{System Design and Architecture}
+% =========================================================
+
+\section{Global Architecture}
+IOhire is designed as a multi-service web platform:
+\begin{itemize}
+    \item \textbf{Frontend:} Angular standalone application for public, HR, and admin views.
+    \item \textbf{Backend:} Strapi (Node.js/TypeScript) exposing REST APIs and custom business routes.
+    \item \textbf{Database:} PostgreSQL for persistent storage.
+    \item \textbf{AI Service:} Ollama endpoint used for CV parsing and standardized content generation.
+    \item \textbf{Containerization:} Docker Compose orchestrates all runtime services.
+\end{itemize}
+
+\section{Technology Stack}
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{4cm}|p{3cm}|p{6cm}|}
+\hline
+\textbf{Layer} & \textbf{Technology} & \textbf{Justification} \\ \hline
+Frontend & Angular 21 & Structured SPA, routing, reactive forms, modular components. \\ \hline
+Backend & Strapi 5 / Node.js & Fast content API setup + custom controllers/routes for business logic. \\ \hline
+Database & PostgreSQL 16 & Reliable relational persistence and production-grade support. \\ \hline
+AI Runtime & Ollama (llama3.2:3b) & On-prem style model serving and controllable prompt pipeline. \\ \hline
+Containerization & Docker / Compose & Reproducible environments and easier deployment. \\ \hline
+Charts & Chart.js & Visual analytics for HR KPIs. \\ \hline
+\end{tabular}
+\caption{Technical stack summary}
+\end{table}
+
+\section{Data Model Overview}
+\subsection{Candidate Entity}
+The \texttt{candidate} model includes:
+\begin{itemize}
+    \item identity fields (\texttt{fullName}, \texttt{email}),
+    \item uploaded \texttt{resume},
+    \item AI outputs (\texttt{extractedData}, \texttt{score}, \texttt{standardizedCvMarkdown}),
+    \item process lifecycle status (\texttt{new}, \texttt{processing}, \texttt{processed}, etc.),
+    \item compliance fields (\texttt{consent}, \texttt{consentAt}, \texttt{retentionUntil}),
+    \item public tracking field (\texttt{publicToken}),
+    \item relation to one \texttt{jobPosting}.
+\end{itemize}
+
+\subsection{Job Posting Entity}
+The \texttt{job-posting} model includes:
+\begin{itemize}
+    \item \texttt{title}, \texttt{description},
+    \item JSON \texttt{requirements} (skills required, nice-to-have skills, minimum experience),
+    \item workflow status (\texttt{draft}, \texttt{open}, \texttt{closed}),
+    \item relation to multiple candidates.
+\end{itemize}
+
+\section{API Design (Key Custom Routes)}
+\begin{longtable}{|p{2.4cm}|p{5.6cm}|p{5.2cm}|}
+\caption{Selected custom API endpoints} \\ \hline
+\textbf{Module} & \textbf{Route} & \textbf{Purpose} \\ \hline
+Public & \texttt{POST /api/public/applications} & Submit candidate application with resume file. \\ \hline
+Public & \texttt{GET /api/public/applications/:token} & Retrieve current application status. \\ \hline
+Public & \texttt{GET /api/public/applications/:token/standardized-cv.pdf} & Download standardized CV PDF. \\ \hline
+Public & \texttt{DELETE /api/public/applications/:token} & Delete candidate data from public flow. \\ \hline
+Public & \texttt{GET /api/public/job-postings} & List open jobs only. \\ \hline
+HR & \texttt{GET /api/hr/candidates/:id/detail} & Get enriched candidate detail for HR view. \\ \hline
+HR & \texttt{POST /api/hr/candidates/:id/reprocess} & Restart AI pipeline for candidate. \\ \hline
+HR & \texttt{GET /api/hr/candidates/:id/standardized-cv.pdf} & Download HR-side standardized CV PDF. \\ \hline
+HR & \texttt{GET /api/hr/cv-templates} & List available CV templates. \\ \hline
+Meta & \texttt{GET /api/meta} & Return dynamic enum values for statuses. \\ \hline
+\end{longtable}
+
+\section{AI Processing Pipeline}
+The candidate AI pipeline is implemented server-side in dedicated utilities:
+\begin{enumerate}
+    \item \textbf{Text extraction:} read uploaded CV and extract text from PDF/DOCX/TXT.
+    \item \textbf{Structured parsing:} prompt Ollama to transform raw text into normalized JSON (contact, skills, experience, education, etc.).
+    \item \textbf{Deterministic evaluation:} compute fit and completeness scores from required skills and profile quality.
+    \item \textbf{Standardized content generation:} generate polished, ATS-friendly resume sections.
+    \item \textbf{Markdown/PDF output:} render standardized CV content and expose PDF download routes.
+\end{enumerate}
+
+\section{Security and Governance Design}
+\begin{itemize}
+    \item HR endpoints are protected using JWT-based authentication.
+    \item Public endpoints are restricted to token-based operations.
+    \item Candidate consent is mandatory before submission.
+    \item Retention policy is enforced through a purge cron task.
+    \item Stuck processing records are handled by watchdog logic.
+\end{itemize}
+
+\section{Chapter Conclusion}
+This architecture combines modular APIs, AI-assisted processing, and deployable infrastructure. The next chapter describes what was implemented in each sprint.
+
+% =========================================================
+\chapter{Implementation and Sprint Execution}
+% =========================================================
+
+\section{Sprint 0: Foundation and Environment}
+\subsection{Objectives}
+\begin{itemize}
+    \item Initialize repository structure (\texttt{frontend}, \texttt{backend}, \texttt{docker-compose.yml}).
+    \item Configure Docker services for PostgreSQL, Ollama, and Strapi.
+    \item Prepare Angular frontend scaffolding and backend API baseline.
+\end{itemize}
+
+\subsection{Key Outputs}
+\begin{itemize}
+    \item Running multi-container environment with shared network.
+    \item Strapi backend connected to PostgreSQL.
+    \item Angular project structure with route organization.
+\end{itemize}
+
+\section{Sprint 1: Public Application Flow}
+\subsection{Implemented Features}
+\begin{itemize}
+    \item Public job listing for open positions.
+    \item Candidate application form with consent and resume upload.
+    \item Token-based tracking page with periodic refresh for pending states.
+    \item Candidate self-service deletion endpoint.
+\end{itemize}
+
+\subsection{Technical Notes}
+\begin{itemize}
+    \item File type and size validation added at backend submission endpoint.
+    \item Status flow starts at \texttt{new} and evolves asynchronously.
+    \item Frontend integration uses an API service abstraction for all endpoints.
+\end{itemize}
+
+\section{Sprint 2: HR Operations and Dashboard}
+\subsection{Implemented Features}
+\begin{itemize}
+    \item HR authentication and route guards.
+    \item Job posting CRUD with status transitions and requirement metadata.
+    \item Candidate list with filtering, status update, note management, and detail pages.
+    \item Analytics page with KPIs and charts (status distribution, scores, submissions over time).
+\end{itemize}
+
+\subsection{Technical Notes}
+\begin{itemize}
+    \item Auth interceptor automatically appends JWT to private API calls.
+    \item Candidate and job status values are read from backend metadata endpoint.
+    \item HR actions include resume download and standardized CV PDF access.
+\end{itemize}
+
+\section{Sprint 3: AI Engine and Standardization}
+\subsection{Implemented Features}
+\begin{itemize}
+    \item CV text extraction utility for PDF/DOCX/TXT.
+    \item Prompt-driven parsing and generation via Ollama chat API.
+    \item Deterministic score computation with required/nice-to-have skills and profile completeness.
+    \item Standardized CV generation with template support.
+\end{itemize}
+
+\subsection{Technical Notes}
+\begin{itemize}
+    \item JSON recovery and repair fallback improve resilience to malformed model output.
+    \item Candidate profile stores extracted data and generated resume content for traceability.
+    \item Multiple CV templates are exposed for HR preview and candidate-level selection.
+\end{itemize}
+
+\section{Sprint 4: Stabilization and Operations}
+\subsection{Implemented Features}
+\begin{itemize}
+    \item Reprocess endpoint to rerun AI for selected candidates.
+    \item Scheduled worker to process new candidates.
+    \item Watchdog to mark stuck processing records as error after timeout.
+    \item Retention cron to purge expired candidate data and associated uploaded files.
+\end{itemize}
+
+\subsection{Technical Notes}
+\begin{itemize}
+    \item Operational tasks are configured through environment variables and cron rules.
+    \item Error handling and logs were reinforced around long-running AI tasks.
+\end{itemize}
+
+\section{Chapter Conclusion}
+The implementation phase transformed business requirements into a complete working platform, including end-user features, AI assistance, and operational reliability controls.
+
+% =========================================================
+\chapter{Validation and Testing}
+% =========================================================
+
+\section{Testing Strategy}
+Validation combined manual functional testing and integration checks across frontend, backend, and container services.
+
+The objective was to verify:
+\begin{itemize}
+    \item correctness of user workflows,
+    \item consistency of status transitions,
+    \item robustness of AI-related processing paths,
+    \item and reliability of deployment/runtime behavior.
+\end{itemize}
+
+\section{Representative Test Scenarios}
+\begin{longtable}{|p{0.9cm}|p{4.8cm}|p{4.7cm}|p{3.6cm}|}
+\caption{Functional test matrix} \\ \hline
+\textbf{ID} & \textbf{Scenario} & \textbf{Expected Result} & \textbf{Status} \\ \hline
+T1 & Submit application with valid resume and consent & Candidate record created, token returned, status initialized & Passed \\ \hline
+T2 & Submit without consent & API rejects request with clear validation message & Passed \\ \hline
+T3 & Track application with valid token & Public status endpoint returns current processing state & Passed \\ \hline
+T4 & HR login with valid credentials & JWT returned and protected routes accessible & Passed \\ \hline
+T5 & Create new job posting & Job appears in HR list and in public list when status=open & Passed \\ \hline
+T6 & Reprocess candidate from HR list & Candidate re-enters processing pipeline and updates after completion & Passed \\ \hline
+T7 & Download standardized CV PDF & Generated PDF is returned with expected filename & Passed \\ \hline
+T8 & Trigger deletion from public tracking page & Candidate and associated resume are removed & Passed \\ \hline
+\end{longtable}
+
+\section{Data and AI Validation}
+AI output quality was checked on:
+\begin{itemize}
+    \item extraction consistency for contact and experience fields,
+    \item score coherence relative to job requirements,
+    \item generated CV readability and structural completeness,
+    \item fallback behavior when model output is malformed.
+\end{itemize}
+
+\section{Known Limitations}
+\begin{itemize}
+    \item CV quality depends on uploaded document clarity and structure.
+    \item Model response quality may vary by resume language and complexity.
+    \item Advanced ranking explainability can be improved further in future versions.
+\end{itemize}
+
+\section{Chapter Conclusion}
+Testing confirms that IOhire satisfies the targeted functional scope and behaves reliably across the principal workflows.
+
+% =========================================================
+\chapter{Deployment, Operations, and Security}
+% =========================================================
+
+\section{Containerized Deployment}
+The platform is deployed with Docker Compose using three core services:
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{3cm}|p{3.2cm}|p{6.8cm}|}
+\hline
+\textbf{Service} & \textbf{Image / Build} & \textbf{Role} \\ \hline
+postgres & \texttt{postgres:16-alpine} & Persistent relational data storage. \\ \hline
+ollama & \texttt{ollama/ollama:latest} & Local AI inference endpoint for parsing and generation. \\ \hline
+strapi & Local Docker build (\texttt{./backend}) & Business API, custom routes, cron jobs, and file management. \\ \hline
+\end{tabular}
+\caption{Runtime services in Docker Compose}
+\end{table}
+
+\section{Operational Mechanisms}
+The backend includes scheduled operational controls:
+\begin{itemize}
+    \item \textbf{Candidate worker cron:} processes pending (\texttt{new}) applications in batches.
+    \item \textbf{Watchdog cron:} marks long-running processing entries as error after timeout.
+    \item \textbf{Retention cron:} purges expired candidate data and linked uploaded files.
+\end{itemize}
+
+\section{Security Measures}
+\begin{itemize}
+    \item JWT-based HR authentication and protected routes.
+    \item Public endpoints isolated from HR operations.
+    \item Resume file type and maximum size checks.
+    \item Explicit consent field required before candidate creation.
+    \item Tokenized public status lookup instead of exposing internal IDs.
+\end{itemize}
+
+\section{Production Readiness Checklist}
+\begin{itemize}
+    \item Environment variables externalized (\texttt{.env}).
+    \item Database persistence via named Docker volume.
+    \item Uploaded files persistence via dedicated volume.
+    \item Cron safeguards and logging for asynchronous tasks.
+\end{itemize}
+
+\section{Chapter Conclusion}
+Containerized deployment and operational jobs make IOhire stable and maintainable. Security and data handling rules reduce risk while preserving usability.
+
+% =========================================================
+\chapter*{General Conclusion}
+\addcontentsline{toc}{chapter}{General Conclusion}
+This internship resulted in the delivery of \textbf{IOhire}, a complete recruitment platform that combines application management, HR operations, analytics, and AI-assisted CV processing.
+
+The solution addresses real recruitment constraints by reducing manual tasks, standardizing candidate evaluation inputs, and improving traceability from job publication to hiring decisions.
+
+From a technical perspective, the project demonstrates effective integration of Angular, Strapi, PostgreSQL, Ollama, and Docker in a coherent and scalable architecture.
+
+\chapter*{Future Work}
+\addcontentsline{toc}{chapter}{Future Work}
+Possible next improvements include:
+\begin{enumerate}
+    \item Introduce role-based access levels beyond a single HR profile type.
+    \item Add multilingual CV parsing and evaluation support.
+    \item Integrate calendar/email services for interview scheduling automation.
+    \item Add advanced explainability for AI score components in the HR interface.
+    \item Add CI/CD pipelines and automated regression tests for critical flows.
+\end{enumerate}
+
+\chapter*{References}
+\addcontentsline{toc}{chapter}{References}
+\begin{thebibliography}{9}
+\bibitem{angular}
+Angular Documentation, \url{https://angular.dev}
+
+\bibitem{strapi}
+Strapi Documentation, \url{https://docs.strapi.io}
+
+\bibitem{docker}
+Docker Documentation, \url{https://docs.docker.com}
+
+\bibitem{ollama}
+Ollama Documentation, \url{https://github.com/ollama/ollama}
+\end{thebibliography}
+
+\chapter*{Appendix A: Suggested Figures to Add}
+\addcontentsline{toc}{chapter}{Appendix A: Suggested Figures to Add}
+To make this report more visual, add the following figures if available:
+\begin{itemize}
+    \item Global architecture diagram (frontend/backend/database/AI services).
+    \item Main use-case diagram (candidate and HR actors).
+    \item Sequence diagram for candidate submission and AI processing.
+    \item Screenshots of public apply page, HR candidates page, and analytics dashboard.
+\end{itemize}
+
+\end{document}
