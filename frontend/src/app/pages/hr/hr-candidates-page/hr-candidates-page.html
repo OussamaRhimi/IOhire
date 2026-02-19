@@ -25,30 +25,76 @@
 
     @if (showFilters()) {
       <div class="candidate-filter-panel">
-        <div class="grid2">
-          <label class="field">
+        <div class="candidate-filter-grid">
+          <label class="field candidate-filter-field">
             <span class="field__label">Status</span>
-            <select class="input" formControlName="status">
+            <select class="input candidate-filter-input" formControlName="status">
               <option value="">All</option>
               @for (s of statusOptions(); track s) {
                 <option [value]="s">{{ s }}</option>
               }
             </select>
           </label>
-          <label class="field">
-            <span class="field__label">Score filter</span>
-            <select class="input" formControlName="scoreFilter">
-              @for (option of scoreOptions; track option.value + option.label) {
-                <option [value]="option.value">{{ option.label }}</option>
-              }
-            </select>
-          </label>
-        </div>
 
-        <div class="grid2">
-          <label class="field">
+          <div class="field candidate-filter-field candidate-score-filter">
+            <div class="candidate-score-filter__head">
+              <span class="field__label">Score filter</span>
+              <label class="candidate-score-filter__toggle">
+                <input type="checkbox" formControlName="scoreEnabled" />
+                <span>Apply</span>
+              </label>
+            </div>
+
+            <div
+              class="candidate-score-filter__controls"
+              [class.candidate-score-filter__controls--disabled]="!filterForm.controls.scoreEnabled.value"
+            >
+              <div class="candidate-score-filter__radios">
+                <label
+                  class="candidate-score-filter__radio"
+                  [class.candidate-score-filter__radio--active]="filterForm.controls.scoreOperator.value === 'gt'"
+                >
+                  <input
+                    type="radio"
+                    formControlName="scoreOperator"
+                    value="gt"
+                    [disabled]="!filterForm.controls.scoreEnabled.value"
+                  />
+                  <span>Above</span>
+                </label>
+
+                <label
+                  class="candidate-score-filter__radio"
+                  [class.candidate-score-filter__radio--active]="filterForm.controls.scoreOperator.value === 'lt'"
+                >
+                  <input
+                    type="radio"
+                    formControlName="scoreOperator"
+                    value="lt"
+                    [disabled]="!filterForm.controls.scoreEnabled.value"
+                  />
+                  <span>Below</span>
+                </label>
+              </div>
+
+              <div class="candidate-score-filter__range-row">
+                <input
+                  class="candidate-score-filter__range"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  formControlName="scoreThreshold"
+                  [disabled]="!filterForm.controls.scoreEnabled.value"
+                />
+                <span class="candidate-score-filter__value">{{ filterForm.controls.scoreThreshold.value }}%</span>
+              </div>
+            </div>
+          </div>
+
+          <label class="field candidate-filter-field">
             <span class="field__label">Open job</span>
-            <select class="input" formControlName="jobId">
+            <select class="input candidate-filter-input" formControlName="jobId">
               <option value="">All open jobs</option>
               @for (job of openJobs(); track job.id) {
                 <option [value]="job.id">{{ job.title }}</option>
@@ -183,8 +229,6 @@
             </div>
             <div class="candidate-actions-cell">
               <button class="candidate-link-btn" type="button" (click)="view(c)">View</button>
-              <button class="candidate-link-btn" type="button" (click)="openResume(c)">View CV</button>
-              <button class="candidate-link-btn" type="button" (click)="openStandardizedPdf(c)">Template</button>
             </div>
           </div>
         }

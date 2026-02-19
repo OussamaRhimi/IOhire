@@ -15,6 +15,14 @@ type CandidateEntity = {
 const PARSER_SYSTEM_PROMPT =
   'Extract contact info, skills, and work history from this CV into a clean JSON structure. ' +
   'Return ONLY valid JSON (no markdown, no code fences). ' +
+  'IMPORTANT: For all dates (startDate, endDate), use the format "Month YYYY" (e.g. "June 2025"). ' +
+  'If only a year is given, use "YYYY". If the role is current/ongoing, set endDate to "Present". ' +
+  'CRITICAL CLASSIFICATION RULES: ' +
+  '- "education" is for degrees, diplomas, academic programs at universities, institutes, schools, or colleges (e.g. "Software Engineering at ISIMS", "Bachelor at MIT"). ' +
+  '- "experience" is ONLY for professional work: jobs, internships at companies, freelance work. ' +
+  '- If someone is a STUDENT at a university/institute/school, that belongs in "education", NOT "experience". ' +
+  '- Internships at companies (not schools) go in "experience". ' +
+  '- Academic projects or student roles at educational institutions go in "education" or "projects", NOT "experience". ' +
   'Use this shape: { contact: { fullName?: string, email?: string, phone?: string, location?: string, links?: string[] }, ' +
   'summary?: string, skills: string[], experience: Array<{ company?: string, title?: string, startDate?: string, endDate?: string, highlights?: string[] }>, ' +
   'education?: Array<{ school?: string, degree?: string, startDate?: string, endDate?: string }>, certifications?: string[], projects?: Array<{ name?: string, description?: string, links?: string[] }> }';
@@ -120,7 +128,14 @@ function normalizeDateText(input: unknown): string | null {
   for (const [rx, replacement] of MONTH_MAP) out = out.replace(rx, replacement);
 
   out = out.replace(/\bactuellement\b|\ben cours\b/gi, 'Present');
-  return out.trim() || null;
+
+  // Trim trailing dashes/spaces that sometimes appear: "June 2025 - -" → "June 2025"
+  out = out.replace(/[\s-]+$/, '').trim();
+
+  // Collapse stray separators: "- -" or "--" at the end
+  out = out.replace(/^[\s-]+$/, '').trim();
+
+  return out || null;
 }
 
 function normalizeParsedData(parsed: Record<string, unknown>): Record<string, unknown> {
@@ -137,7 +152,7 @@ function normalizeParsedData(parsed: Record<string, unknown>): Record<string, un
   const skills = uniqStrings(asStringArray(parsed.skills));
 
   const experienceRaw = Array.isArray(parsed.experience) ? parsed.experience : [];
-  const experience = experienceRaw
+  let experience = experienceRaw
     .map((row: any) => {
       const company = asTrimmedString(row?.company);
       const title = asTrimmedString(row?.title);
@@ -156,7 +171,7 @@ function normalizeParsedData(parsed: Record<string, unknown>): Record<string, un
     .filter(Boolean) as Array<Record<string, unknown>>;
 
   const educationRaw = Array.isArray(parsed.education) ? parsed.education : [];
-  const education = educationRaw
+  let education = educationRaw
     .map((row: any) => {
       const school = asTrimmedString(row?.school);
       const degree = asTrimmedString(row?.degree);
@@ -171,6 +186,92 @@ function normalizeParsedData(parsed: Record<string, unknown>): Record<string, un
       };
     })
     .filter(Boolean) as Array<Record<string, unknown>>;
+
+  // ── Post-processing: fix misclassified education ↔ experience entries ──
+  const eduKeywords = /\b(universit|institut|facult|school|college|acad|isims|isim|isg|isi\b|istic|ensi|enis|enet|esprit|insat|supcom|polytech|licence|bachelor|master|doctorat|mba|diplom|engineer|ing[eé]nieur|bts|dut|student|[eé]tudiant|[eé]l[eè]ve)\b/i;
+  const internKeywords = /\b(intern|internship|stage|stagiaire)\b/i;
+
+  // Move experience entries that look like education
+  const misclassifiedAsExp: Array<Record<string, unknown>> = [];
+  experience = experience.filter((entry) => {
+    const company = String(entry.company ?? '').toLowerCase();
+    const title = String(entry.title ?? '').toLowerCase();
+    const combined = `${company} ${title}`;
+
+    // If the title or company strongly indicates education AND it's not an internship
+    const looksLikeEdu = eduKeywords.test(combined) && !internKeywords.test(combined);
+
+    // Also check if the "company" matches an existing education school name
+    const matchesEduSchool = company && education.some((edu) => {
+      const school = String(edu.school ?? '').toLowerCase();
+      return school && (company.includes(school) || school.includes(company));
+    });
+
+    if (looksLikeEdu || matchesEduSchool) {
+      misclassifiedAsExp.push(entry);
+      return false; // remove from experience
+    }
+    return true;
+  });
+
+  // Convert misclassified experience entries into education entries
+  for (const entry of misclassifiedAsExp) {
+    const school = asTrimmedString(entry.company) || asTrimmedString(entry.title);
+    const degree = asTrimmedString(entry.title) || null;
+    const startDate = asTrimmedString(entry.startDate) || null;
+    const endDate = asTrimmedString(entry.endDate) || null;
+
+    // Check if this school already exists in education
+    const existing = education.find((edu) => {
+      const existingSchool = String(edu.school ?? '').toLowerCase();
+      const newSchool = (school ?? '').toLowerCase();
+      return existingSchool && newSchool && (
+        existingSchool.includes(newSchool) || newSchool.includes(existingSchool)
+      );
+    });
+
+    if (existing) {
+      // Merge: fill in missing dates or degree
+      if (!existing.startDate && startDate) existing.startDate = startDate;
+      if (!existing.endDate && endDate) existing.endDate = endDate;
+      if ((!existing.degree || existing.degree === 'Education') && degree && degree !== school) {
+        existing.degree = degree;
+      }
+    } else {
+      // Add as new education entry
+      education.push({
+        ...(school ? { school } : {}),
+        ...(degree && degree !== school ? { degree } : {}),
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+      });
+    }
+  }
+
+  // Move education entries that look like work experience (e.g., internships at companies)
+  const misclassifiedAsEdu: Array<Record<string, unknown>> = [];
+  education = education.filter((entry) => {
+    const school = String(entry.school ?? '').toLowerCase();
+    const degree = String(entry.degree ?? '').toLowerCase();
+    const combined = `${school} ${degree}`;
+
+    // If it mentions internship and does NOT look like a school
+    if (internKeywords.test(combined) && !eduKeywords.test(combined)) {
+      misclassifiedAsEdu.push(entry);
+      return false;
+    }
+    return true;
+  });
+
+  for (const entry of misclassifiedAsEdu) {
+    experience.push({
+      ...(entry.school ? { company: entry.school } : {}),
+      ...(entry.degree ? { title: entry.degree } : {}),
+      ...(entry.startDate ? { startDate: entry.startDate } : {}),
+      ...(entry.endDate ? { endDate: entry.endDate } : {}),
+    });
+  }
+  // ── End post-processing ──
 
   const projectsRaw = Array.isArray(parsed.projects) ? parsed.projects : [];
   const projects = projectsRaw
@@ -311,19 +412,102 @@ function parseLooseDate(input: unknown): Date | null {
   const lower = normalized.toLowerCase();
   if (['present', 'now', 'current', 'today'].includes(lower)) return new Date();
 
+  // Year only: "2024"
   const yearOnly = /^(\d{4})$/.exec(normalized);
   if (yearOnly) {
     const y = Number(yearOnly[1]);
     if (y >= 1900 && y <= 2100) return new Date(Date.UTC(y, 0, 1));
   }
 
-  const ym = /^(\d{4})-(\d{1,2})$/.exec(normalized);
+  // YYYY-MM or YYYY/MM: "2024-07", "2024/07"
+  const ym = /^(\d{4})[\/-](\d{1,2})$/.exec(normalized);
   if (ym) {
     const y = Number(ym[1]);
     const m = Number(ym[2]);
     if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12) return new Date(Date.UTC(y, m - 1, 1));
   }
 
+  // MM/YYYY or MM-YYYY: "07/2024"
+  const my = /^(\d{1,2})[\/-](\d{4})$/.exec(normalized);
+  if (my) {
+    const m = Number(my[1]);
+    const y = Number(my[2]);
+    if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12) return new Date(Date.UTC(y, m - 1, 1));
+  }
+
+  // Month name map for robust matching
+  const monthNames: Record<string, number> = {
+    january: 0, jan: 0, february: 1, feb: 1, march: 2, mar: 2, april: 3, apr: 3,
+    may: 4, june: 5, jun: 5, july: 6, jul: 6, august: 7, aug: 7,
+    september: 8, sep: 8, sept: 8, october: 9, oct: 9, november: 10, nov: 10,
+    december: 11, dec: 11,
+  };
+
+  // "Month YYYY" or "Mon YYYY" or "Month. YYYY": "June 2025", "Sep. 2024"
+  const monthYearMatch = /^([a-zA-Z]+)\.?\s+(\d{4})$/i.exec(normalized);
+  if (monthYearMatch) {
+    const monthKey = monthYearMatch[1].toLowerCase();
+    const year = Number(monthYearMatch[2]);
+    if (monthKey in monthNames && year >= 1900 && year <= 2100) {
+      return new Date(Date.UTC(year, monthNames[monthKey], 1));
+    }
+  }
+
+  // "YYYY Month": "2024 July"
+  const yearMonthMatch = /^(\d{4})\s+([a-zA-Z]+)\.?$/i.exec(normalized);
+  if (yearMonthMatch) {
+    const year = Number(yearMonthMatch[1]);
+    const monthKey = yearMonthMatch[2].toLowerCase();
+    if (monthKey in monthNames && year >= 1900 && year <= 2100) {
+      return new Date(Date.UTC(year, monthNames[monthKey], 1));
+    }
+  }
+
+  // "DD Month YYYY" or "DD Mon YYYY": "15 June 2025"
+  const dayMonthYear = /^(\d{1,2})\s+([a-zA-Z]+)\.?\s+(\d{4})$/i.exec(normalized);
+  if (dayMonthYear) {
+    const d = Number(dayMonthYear[1]);
+    const monthKey = dayMonthYear[2].toLowerCase();
+    const y = Number(dayMonthYear[3]);
+    if (monthKey in monthNames && y >= 1900 && y <= 2100 && d >= 1 && d <= 31) {
+      return new Date(Date.UTC(y, monthNames[monthKey], d));
+    }
+  }
+
+  // "Month DD, YYYY": "June 15, 2025"
+  const monthDayYear = /^([a-zA-Z]+)\.?\s+(\d{1,2}),?\s+(\d{4})$/i.exec(normalized);
+  if (monthDayYear) {
+    const monthKey = monthDayYear[1].toLowerCase();
+    const d = Number(monthDayYear[2]);
+    const y = Number(monthDayYear[3]);
+    if (monthKey in monthNames && y >= 1900 && y <= 2100 && d >= 1 && d <= 31) {
+      return new Date(Date.UTC(y, monthNames[monthKey], d));
+    }
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY: "15/07/2024"
+  const dmy = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/.exec(normalized);
+  if (dmy) {
+    const d = Number(dmy[1]);
+    const m = Number(dmy[2]);
+    const y = Number(dmy[3]);
+    if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return new Date(Date.UTC(y, m - 1, d));
+    }
+  }
+
+  // YYYY-MM-DD: "2024-07-15"
+  const ymd = /^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/.exec(normalized);
+  if (ymd) {
+    const y = Number(ymd[1]);
+    const m = Number(ymd[2]);
+    const d = Number(ymd[3]);
+    if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return new Date(Date.UTC(y, m - 1, d));
+    }
+  }
+
+  // Fallback to native parser
   const parsed = Date.parse(normalized);
   if (!Number.isFinite(parsed)) return null;
   return new Date(parsed);

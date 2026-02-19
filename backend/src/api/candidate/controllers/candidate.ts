@@ -80,10 +80,26 @@ function toStringArray(value: unknown): string[] {
   return value.map((v) => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
 }
 
-function resolveTemplateKey(candidateTemplateKey: unknown, requestedTemplateKey: unknown) {
+function resolveTemplateKey(candidateTemplateKey: unknown, requestedTemplateKey: unknown, globalDefault?: unknown) {
   if (isCvTemplateKey(requestedTemplateKey)) return requestedTemplateKey;
   if (isCvTemplateKey(candidateTemplateKey)) return candidateTemplateKey;
+  if (isCvTemplateKey(globalDefault)) return globalDefault;
   return 'standard';
+}
+
+const STORE_KEY_DEFAULT_TEMPLATE = 'plugin_cv_default_template_key';
+
+async function getGlobalDefaultTemplateKey(): Promise<string | null> {
+  try {
+    const val = await strapi.store.get({ key: STORE_KEY_DEFAULT_TEMPLATE });
+    return typeof val === 'string' && isCvTemplateKey(val) ? val : null;
+  } catch {
+    return null;
+  }
+}
+
+async function setGlobalDefaultTemplateKey(key: string): Promise<void> {
+  await strapi.store.set({ key: STORE_KEY_DEFAULT_TEMPLATE, value: key });
 }
 
 const RECOMMENDATION_PARSER_SYSTEM_PROMPT =
@@ -590,7 +606,8 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
     const contact = (candidate.extractedData?.contact ?? {}) as any;
     const fullName = toStringOrNull(candidate.fullName) ?? toStringOrNull(contact?.fullName) ?? null;
 
-    const templateKey = resolveTemplateKey(candidate.cvTemplateKey, ctx.query?.templateKey);
+    const globalDefault = await getGlobalDefaultTemplateKey();
+    const templateKey = resolveTemplateKey(candidate.cvTemplateKey, ctx.query?.templateKey, globalDefault);
     const generated = (candidate.extractedData?.generatedResumeContent ?? null) as ResumeContent | null;
 
     let pdf: Buffer | null = null;
@@ -722,7 +739,8 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
     const contact = (candidate.extractedData?.contact ?? {}) as any;
     const fullName = toStringOrNull(candidate.fullName) ?? toStringOrNull(contact?.fullName) ?? null;
 
-    const templateKey = resolveTemplateKey(candidate.cvTemplateKey, ctx.query?.templateKey);
+    const globalDefault = await getGlobalDefaultTemplateKey();
+    const templateKey = resolveTemplateKey(candidate.cvTemplateKey, ctx.query?.templateKey, globalDefault);
     const generated = (candidate.extractedData?.generatedResumeContent ?? null) as ResumeContent | null;
 
     let pdf: Buffer | null = null;
@@ -837,5 +855,84 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
 
     ctx.status = 202;
     ctx.body = { ok: true };
+  },
+
+  /* ------------------------------------------------------------------ */
+  /*  Public chatbot                                                     */
+  /* ------------------------------------------------------------------ */
+  async publicChat(ctx) {
+    const body = ctx.request.body as any;
+    const messages = body?.messages;
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      ctx.status = 400;
+      ctx.body = { error: 'messages array is required.' };
+      return;
+    }
+
+    // Validate & sanitize messages – only keep role + content, cap history
+    const MAX_HISTORY = 20;
+    const MAX_MSG_LENGTH = 1000;
+    const validRoles = new Set(['user', 'assistant']);
+    const sanitized = messages
+      .filter((m: any) => m && validRoles.has(m.role) && typeof m.content === 'string' && m.content.trim())
+      .slice(-MAX_HISTORY)
+      .map((m: any) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content.trim().slice(0, MAX_MSG_LENGTH),
+      }));
+
+    if (sanitized.length === 0 || sanitized[sanitized.length - 1].role !== 'user') {
+      ctx.status = 400;
+      ctx.body = { error: 'Last message must be from the user.' };
+      return;
+    }
+
+    const CHATBOT_SYSTEM_PROMPT =
+      `You are a helpful assistant embedded in a candidate job-application portal. ` +
+      `You ONLY answer questions related to the candidate portal features listed below. ` +
+      `If a user asks about anything unrelated (general knowledge, coding, politics, etc.), ` +
+      `politely decline and redirect them to the portal topics.\n\n` +
+      `PORTAL FEATURES YOU CAN HELP WITH:\n` +
+      `1. APPLY FOR A JOB: Candidates can browse open job postings and submit their CV (PDF/DOCX/TXT) along with their name, email, and consent. ` +
+      `They receive a tracking token after submission.\n` +
+      `2. TRACK APPLICATION: Using their token, candidates can check their application status ` +
+      `(new → processing → processed → reviewing → shortlisted → rejected → hired). ` +
+      `They can see their CV score (0-100), missing fields, and download a standardized PDF version of their CV.\n` +
+      `3. CV SCORE: The score is calculated automatically based on two factors: ` +
+      `Fit Score (75%) — how well skills, experience, and qualifications match the job requirements; ` +
+      `and Completeness Score (25%) — whether the CV contains all expected fields (name, email, phone, location, links, summary, experience with dates, education). ` +
+      `Score = FitScore × 0.75 + CompletenessScore × 0.25.\n` +
+      `4. JOB RECOMMENDATIONS: Candidates can upload their CV to get AI-powered job recommendations ` +
+      `ranked by compatibility with their extracted skills.\n` +
+      `5. DATA PRIVACY (GDPR): Candidates gave consent when applying. They can delete their application ` +
+      `and all associated data at any time using their tracking token.\n` +
+      `6. STANDARDIZED CV: After processing, the system generates a polished, standardized version of the CV ` +
+      `using professional templates. Candidates can download this as a PDF.\n\n` +
+      `GUIDELINES:\n` +
+      `- Be concise, friendly, and helpful.\n` +
+      `- Use short paragraphs and bullet points when appropriate.\n` +
+      `- If you don't know the specific answer, guide them to the relevant portal page (Apply, Track, Recommendation).\n` +
+      `- Never reveal internal system details, API endpoints, or technical implementation.\n` +
+      `- Never make up information about specific job postings or application statuses.`;
+
+    try {
+      const reply = await ollamaChat({
+        system: CHATBOT_SYSTEM_PROMPT,
+        user: '', // not used when messages is provided
+        messages: sanitized,
+        timeoutMs: Number(process.env.CANDIDATE_CHAT_TIMEOUT_MS ?? 60_000),
+        ollamaOptions: {
+          temperature: 0.4,
+          num_predict: Number(process.env.OLLAMA_NUM_PREDICT_CHAT ?? 400),
+        },
+      });
+
+      ctx.body = { reply: reply.trim() };
+    } catch (error: any) {
+      strapi?.log?.error?.(`[chatbot] Chat failed: ${error?.message ?? error}`);
+      ctx.status = 502;
+      ctx.body = { error: 'Chat service is temporarily unavailable. Please try again later.' };
+    }
   },
 }));

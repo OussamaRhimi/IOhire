@@ -5,12 +5,18 @@ import { Router, RouterLink } from '@angular/router';
 import { startWith } from 'rxjs';
 import { formatDateTime } from '../../../core/format/date';
 import { toErrorMessage } from '../../../core/http/http-error';
+import { getHrDefaultCvTemplateKey } from '../../../core/strapi/cv-template.storage';
 import { StrapiApi } from '../../../core/strapi/strapi.api';
 import { CandidateStatus, HrCandidate } from '../../../core/strapi/strapi.types';
 
 type SearchColumnKey = 'fullName' | 'email' | 'jobTitle' | 'status' | 'score' | 'hrNotes';
 type SearchScope = SearchColumnKey | 'all';
-type ScoreFilter = '' | `${'gt' | 'lt'}:${number}`;
+type ScoreOperator = 'gt' | 'lt';
+type ScoreFilterState = {
+  enabled: boolean;
+  operator: ScoreOperator;
+  threshold: number;
+};
 type OpenJobOption = {
   id: number;
   title: string;
@@ -26,23 +32,6 @@ const DEFAULT_CANDIDATE_STATUSES: CandidateStatus[] = [
   'hired',
   'error',
 ];
-const SCORE_FILTER_OPTIONS: Array<{ value: ScoreFilter; label: string }> = [
-  { value: '', label: 'All scores' },
-  { value: 'lt:30', label: 'Below 30' },
-  { value: 'lt:40', label: 'Below 40' },
-  { value: 'lt:50', label: 'Below 50' },
-  { value: 'lt:60', label: 'Below 60' },
-  { value: 'lt:70', label: 'Below 70' },
-  { value: 'lt:80', label: 'Below 80' },
-  { value: 'lt:90', label: 'Below 90' },
-  { value: 'gt:30', label: 'Above 30' },
-  { value: 'gt:40', label: 'Above 40' },
-  { value: 'gt:50', label: 'Above 50' },
-  { value: 'gt:60', label: 'Above 60' },
-  { value: 'gt:70', label: 'Above 70' },
-  { value: 'gt:80', label: 'Above 80' },
-  { value: 'gt:90', label: 'Above 90' },
-];
 
 function normalizeSearchText(value: unknown): string {
   const s = String(value ?? '')
@@ -52,15 +41,13 @@ function normalizeSearchText(value: unknown): string {
   return s;
 }
 
-function matchesScoreFilter(score: number | null, scoreFilter: ScoreFilter): boolean {
-  if (!scoreFilter) return true;
+function matchesScoreFilter(score: number | null, scoreFilter: ScoreFilterState): boolean {
+  if (!scoreFilter.enabled) return true;
   if (typeof score !== 'number' || !Number.isFinite(score)) return false;
-  const match = /^(gt|lt):(\d{1,3})$/.exec(scoreFilter);
-  if (!match) return true;
-  const operator = match[1];
-  const threshold = Number(match[2]);
-  if (!Number.isFinite(threshold)) return true;
-  return operator === 'gt' ? score > threshold : score < threshold;
+  const threshold = Number.isFinite(scoreFilter.threshold)
+    ? Math.min(100, Math.max(0, Math.round(scoreFilter.threshold)))
+    : 0;
+  return scoreFilter.operator === 'gt' ? score > threshold : score < threshold;
 }
 
 @Component({
@@ -83,13 +70,14 @@ export class HrCandidatesPage {
   readonly selectedCandidateIds = signal<number[]>([]);
   readonly bulkStatus = signal<'' | CandidateStatus>('');
   readonly statusOptions = computed(() => (this.statuses().length > 0 ? this.statuses() : DEFAULT_CANDIDATE_STATUSES));
-  readonly scoreOptions = SCORE_FILTER_OPTIONS;
 
   readonly filterForm = this.fb.nonNullable.group({
     q: [''],
     status: ['' as '' | CandidateStatus],
     searchScope: this.fb.nonNullable.control<SearchScope>('all'),
-    scoreFilter: this.fb.nonNullable.control<ScoreFilter>(''),
+    scoreEnabled: this.fb.nonNullable.control(false),
+    scoreOperator: this.fb.nonNullable.control<ScoreOperator>('gt'),
+    scoreThreshold: this.fb.nonNullable.control(70),
     jobId: this.fb.nonNullable.control(''),
   });
   readonly searchColumns = [
@@ -112,7 +100,15 @@ export class HrCandidatesPage {
     const qTokens = q.split(/\s+/g).filter(Boolean);
     const status = filter.status ?? '';
     const searchScope: SearchScope = filter.searchScope ?? 'all';
-    const scoreFilter: ScoreFilter = filter.scoreFilter ?? '';
+    const scoreFilterEnabled = !!filter.scoreEnabled;
+    const scoreOperator: ScoreOperator = filter.scoreOperator === 'lt' ? 'lt' : 'gt';
+    const rawScoreThreshold = Number(filter.scoreThreshold);
+    const scoreThreshold = Number.isFinite(rawScoreThreshold) ? rawScoreThreshold : 70;
+    const scoreFilter: ScoreFilterState = {
+      enabled: scoreFilterEnabled,
+      operator: scoreOperator,
+      threshold: scoreThreshold,
+    };
     const selectedJobId = filter.jobId ?? '';
     const selectedJobIdNumber = Number(selectedJobId);
 
@@ -222,7 +218,7 @@ export class HrCandidatesPage {
     try {
       this.loading.set(true);
       this.error.set(null);
-      const [candidates] = await Promise.all([this.api.listHrCandidates(), this.loadOpenJobs()]);
+      const [candidates] = await Promise.all([this.api.listHrCandidates({ onlyOpenJobPostings: true }), this.loadOpenJobs()]);
       this.candidates.set(candidates);
       const currentIds = new Set(candidates.map((c) => c.id));
       this.selectedCandidateIds.update((ids) => ids.filter((id) => currentIds.has(id)));
@@ -238,7 +234,9 @@ export class HrCandidatesPage {
   }
 
   openStandardizedPdf(c: HrCandidate) {
-    window.open(`/api/hr/candidates/${c.id}/standardized-cv.pdf`, '_blank', 'noopener');
+    const defaultKey = getHrDefaultCvTemplateKey();
+    const query = defaultKey ? `?templateKey=${encodeURIComponent(defaultKey)}` : '';
+    window.open(`/api/hr/candidates/${c.id}/standardized-cv.pdf${query}`, '_blank', 'noopener');
   }
 
   view(c: HrCandidate) {
@@ -367,7 +365,9 @@ export class HrCandidatesPage {
       q: '',
       status: '',
       searchScope: 'all',
-      scoreFilter: '',
+      scoreEnabled: false,
+      scoreOperator: 'gt',
+      scoreThreshold: 70,
       jobId: '',
     });
   }

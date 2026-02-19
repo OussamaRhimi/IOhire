@@ -42,21 +42,72 @@ function parseDateLoose(input: unknown): Date | null {
   const raw = input.trim();
   if (!raw) return null;
   const lowered = raw.toLowerCase();
-  if (['present', 'current', 'now', 'today'].includes(lowered)) return new Date();
+  if (['present', 'current', 'now', 'today', 'en cours', 'actuellement'].includes(lowered)) return new Date();
 
+  // Year only: "2024"
   const yearOnly = /^(\d{4})$/.exec(raw);
   if (yearOnly) {
     const y = Number(yearOnly[1]);
     if (y >= 1900 && y <= 2100) return new Date(Date.UTC(y, 0, 1));
   }
 
-  const ym = /^(\d{4})-(\d{1,2})$/.exec(raw);
+  // YYYY-MM: "2024-07"
+  const ym = /^(\d{4})[\/-](\d{1,2})$/.exec(raw);
   if (ym) {
     const y = Number(ym[1]);
     const m = Number(ym[2]);
     if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12) return new Date(Date.UTC(y, m - 1, 1));
   }
 
+  // MM/YYYY or MM-YYYY: "07/2024"
+  const my = /^(\d{1,2})[\/-](\d{4})$/.exec(raw);
+  if (my) {
+    const m = Number(my[1]);
+    const y = Number(my[2]);
+    if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12) return new Date(Date.UTC(y, m - 1, 1));
+  }
+
+  // "Month YYYY" or "Mon YYYY" or "Month. YYYY": "June 2025", "Jun 2025", "Sept. 2024"
+  const monthNames: Record<string, number> = {
+    january: 0, jan: 0, february: 1, feb: 1, march: 2, mar: 2, april: 3, apr: 3,
+    may: 4, june: 5, jun: 5, july: 6, jul: 6, august: 7, aug: 7,
+    september: 8, sep: 8, sept: 8, october: 9, oct: 9, november: 10, nov: 10,
+    december: 11, dec: 11,
+    // French
+    janvier: 0, fevrier: 1, février: 1, mars: 2, avril: 3, mai: 4, juin: 5,
+    juillet: 6, aout: 7, août: 7, septembre: 8, octobre: 9, novembre: 10, decembre: 11, décembre: 11,
+  };
+  const monthYearMatch = /^([a-zA-ZÀ-ÿ]+)\.?\s+(\d{4})$/i.exec(raw);
+  if (monthYearMatch) {
+    const monthKey = monthYearMatch[1].toLowerCase();
+    const year = Number(monthYearMatch[2]);
+    if (monthKey in monthNames && year >= 1900 && year <= 2100) {
+      return new Date(Date.UTC(year, monthNames[monthKey], 1));
+    }
+  }
+
+  // "YYYY Month": "2024 July"
+  const yearMonthMatch = /^(\d{4})\s+([a-zA-ZÀ-ÿ]+)\.?$/i.exec(raw);
+  if (yearMonthMatch) {
+    const year = Number(yearMonthMatch[1]);
+    const monthKey = yearMonthMatch[2].toLowerCase();
+    if (monthKey in monthNames && year >= 1900 && year <= 2100) {
+      return new Date(Date.UTC(year, monthNames[monthKey], 1));
+    }
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY: "15/07/2024"
+  const dmy = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/.exec(raw);
+  if (dmy) {
+    const d = Number(dmy[1]);
+    const m = Number(dmy[2]);
+    const y = Number(dmy[3]);
+    if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return new Date(Date.UTC(y, m - 1, d));
+    }
+  }
+
+  // Fallback to native parser
   const parsed = Date.parse(raw);
   if (!Number.isFinite(parsed)) return null;
   return new Date(parsed);
@@ -208,13 +259,25 @@ export class HrCandidatePage {
         const startRaw = typeof e?.startDate === 'string' ? e.startDate.trim() : '';
         const endRaw = typeof e?.endDate === 'string' ? e.endDate.trim() : '';
         const start = parseDateLoose(startRaw);
-        const end = parseDateLoose(endRaw) ?? (endRaw ? null : new Date());
+        const end = parseDateLoose(endRaw);
         const days = start && end ? diffDays(start, end) : null;
+
+        // Build a human-readable date range string
+        let dateRange: string | null = null;
+        if (startRaw && endRaw) {
+          dateRange = `${startRaw} – ${endRaw}`;
+        } else if (startRaw) {
+          dateRange = `${startRaw} – Present`;
+        } else if (endRaw) {
+          dateRange = endRaw;
+        }
+
         return {
           company: company || null,
           title: title || null,
           startRaw: startRaw || null,
           endRaw: endRaw || null,
+          dateRange,
           days,
           duration: typeof days === 'number' ? formatDuration(days) : null,
         };
@@ -238,10 +301,14 @@ export class HrCandidatePage {
         const school = typeof e?.school === 'string' ? e.school.trim() : '';
         const startDate = typeof e?.startDate === 'string' ? e.startDate.trim() : '';
         const endDate = typeof e?.endDate === 'string' ? e.endDate.trim() : '';
+        let period = '-';
+        if (startDate && endDate) period = `${startDate} \u2013 ${endDate}`;
+        else if (startDate) period = `${startDate} \u2013 Present`;
+        else if (endDate) period = endDate;
         return {
           degree: degree || 'Education',
           school: school || '-',
-          period: [startDate, endDate].filter(Boolean).join(' - ') || '-',
+          period,
         };
       })
       .filter((e: any) => e.degree || e.school || e.period);
@@ -259,6 +326,48 @@ export class HrCandidatePage {
   });
 
   readonly missingInfo = computed(() => this.missing().map((m) => ({ label: m })));
+
+  /** Score explanation breakdown from the deterministic evaluation */
+  readonly scoreExplanation = computed(() => {
+    const evaluation: any = this.extracted()?.evaluation ?? null;
+    if (!evaluation || typeof evaluation.score !== 'number') return null;
+
+    const score = Math.round((evaluation.score ?? 0) * 10) / 10;
+    const fitScore = Math.round((evaluation.fitScore ?? 0) * 10) / 10;
+    const completenessScore = Math.round((evaluation.completenessScore ?? 0) * 10) / 10;
+    const matchedSkills = toStringArray(evaluation.matchedSkills);
+    const missingSkills = toStringArray(evaluation.missingSkills);
+    const matchedNiceToHave = toStringArray(evaluation.matchedNiceToHave);
+    const missingNiceToHave = toStringArray(evaluation.missingNiceToHave);
+    const experienceYears = typeof evaluation.experienceYears === 'number' ? evaluation.experienceYears : null;
+    const notes = typeof evaluation.notes === 'string' && evaluation.notes.trim() ? evaluation.notes.trim() : null;
+
+    const minYears = this.candidate()?.jobPosting?.requirements?.minYearsExperience ?? null;
+    const experienceMet = minYears != null && experienceYears != null ? experienceYears >= minYears : null;
+
+    // Determine a qualitative label
+    let qualityLabel = 'Poor';
+    let qualityClass = 'poor';
+    if (score >= 80) { qualityLabel = 'Excellent'; qualityClass = 'excellent'; }
+    else if (score >= 60) { qualityLabel = 'Good'; qualityClass = 'good'; }
+    else if (score >= 40) { qualityLabel = 'Fair'; qualityClass = 'fair'; }
+
+    return {
+      score,
+      fitScore,
+      completenessScore,
+      matchedSkills,
+      missingSkills,
+      matchedNiceToHave,
+      missingNiceToHave,
+      experienceYears,
+      minYears,
+      experienceMet,
+      notes,
+      qualityLabel,
+      qualityClass,
+    };
+  });
 
   readonly minYearsText = computed(() => {
     const years = this.candidate()?.jobPosting?.requirements?.minYearsExperience;

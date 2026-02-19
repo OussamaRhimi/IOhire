@@ -1,0 +1,71 @@
+<!-- Floating toggle button -->
+<button class="chatbot-fab" (click)="toggle()" [class.chatbot-fab--open]="open()" type="button" aria-label="Open chat assistant">
+  @if (open()) {
+    <lucide-icon [img]="iconClose" [size]="22" />
+  } @else {
+    <lucide-icon [img]="iconChat" [size]="22" />
+  }
+</button>
+
+<!-- Chat popup -->
+@if (open()) {
+  <div class="chatbot-popup">
+    <div class="chatbot-header">
+      <div class="chatbot-header__title">
+        <span class="chatbot-header__icon"><lucide-icon [img]="iconBot" [size]="16" /></span>
+        <div>
+          <div class="strong">Candidate Assistant</div>
+          <div class="chatbot-header__status">Online</div>
+        </div>
+      </div>
+      <button class="chatbot-header__close" (click)="toggle()" type="button" aria-label="Close chat">
+        <lucide-icon [img]="iconClose" [size]="16" />
+      </button>
+    </div>
+
+    <div class="chatbot-messages" #messagesContainer>
+      @for (msg of messages(); track msg.timestamp.getTime() + msg.role) {
+        <div class="chatbot-msg" [class.chatbot-msg--user]="msg.role === 'user'" [class.chatbot-msg--bot]="msg.role === 'assistant'">
+          <div class="chatbot-msg__avatar">
+            @if (msg.role === 'assistant') {
+              <lucide-icon [img]="iconBot" [size]="14" />
+            } @else {
+              <lucide-icon [img]="iconUser" [size]="14" />
+            }
+          </div>
+          <div class="chatbot-msg__bubble">{{ msg.content }}</div>
+        </div>
+      }
+
+      @if (sending()) {
+        <div class="chatbot-msg chatbot-msg--bot">
+          <div class="chatbot-msg__avatar">
+            <lucide-icon [img]="iconBot" [size]="14" />
+          </div>
+          <div class="chatbot-msg__bubble chatbot-typing">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      }
+
+      @if (error()) {
+        <div class="chatbot-error">{{ error() }}</div>
+      }
+    </div>
+
+    <div class="chatbot-input-bar">
+      <textarea
+        class="chatbot-input"
+        [ngModel]="input()"
+        (ngModelChange)="input.set($event)"
+        (keydown)="onKeydown($event)"
+        placeholder="Type your question..."
+        rows="1"
+        [disabled]="sending()"
+      ></textarea>
+      <button class="chatbot-send" (click)="send()" [disabled]="sending() || !input().trim()" type="button" aria-label="Send message">
+        <lucide-icon [img]="iconSend" [size]="16" />
+      </button>
+    </div>
+  </div>
+}

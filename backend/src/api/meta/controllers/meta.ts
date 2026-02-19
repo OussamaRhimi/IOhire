@@ -1,3 +1,7 @@
+import { isCvTemplateKey } from '../../../utils/cv-templates';
+
+const STORE_KEY_DEFAULT_TEMPLATE = 'plugin_cv_default_template_key';
+
 export default {
   async get(ctx) {
     const strapi = (globalThis as any).strapi;
@@ -17,6 +21,31 @@ export default {
       jobPostingStatuses: Array.isArray(jobPostingStatuses) ? jobPostingStatuses : [],
       candidateStatuses: Array.isArray(candidateStatuses) ? candidateStatuses : [],
     };
+  },
+
+  async getDefaultTemplate(ctx) {
+    const strapi = (globalThis as any).strapi;
+    try {
+      const val = await strapi.store.get({ key: STORE_KEY_DEFAULT_TEMPLATE });
+      ctx.body = { templateKey: typeof val === 'string' && isCvTemplateKey(val) ? val : 'standard' };
+    } catch {
+      ctx.body = { templateKey: 'standard' };
+    }
+  },
+
+  async setDefaultTemplate(ctx) {
+    const strapi = (globalThis as any).strapi;
+    const body = (ctx.request as any).body ?? {};
+    const templateKey = typeof body.templateKey === 'string' ? body.templateKey.trim() : '';
+
+    if (!templateKey || !isCvTemplateKey(templateKey)) {
+      ctx.status = 400;
+      ctx.body = { error: 'Invalid templateKey.' };
+      return;
+    }
+
+    await strapi.store.set({ key: STORE_KEY_DEFAULT_TEMPLATE, value: templateKey });
+    ctx.body = { ok: true, templateKey };
   },
 };
 

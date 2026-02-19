@@ -23,6 +23,7 @@ const DEFAULT_OLLAMA_URL = 'http://ollama:11434';
 export async function ollamaChat(options: {
   system: string;
   user: string;
+  messages?: OllamaChatMessage[];
   format?: 'json';
   model?: string;
   timeoutMs?: number;
@@ -37,12 +38,17 @@ export async function ollamaChat(options: {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    // Build messages: system + either explicit history or simple system+user pair
+    const chatMessages: OllamaChatMessage[] = options.messages
+      ? [{ role: 'system', content: options.system }, ...options.messages]
+      : [
+          { role: 'system', content: options.system },
+          { role: 'user', content: options.user },
+        ];
+
     const body: OllamaChatRequest = {
       model,
-      messages: [
-        { role: 'system', content: options.system },
-        { role: 'user', content: options.user },
-      ],
+      messages: chatMessages,
       stream: false,
       options: {
         temperature: options.format === 'json' ? 0 : 0.2,

@@ -87,6 +87,15 @@ export class StrapiApi {
     };
   }
 
+  async getDefaultTemplate(): Promise<string> {
+    const res = await firstValueFrom(this.http.get<any>('/api/meta/default-template'));
+    return typeof res?.templateKey === 'string' ? res.templateKey : 'standard';
+  }
+
+  async setDefaultTemplate(templateKey: string): Promise<void> {
+    await firstValueFrom(this.http.put<any>('/api/meta/default-template', { templateKey }));
+  }
+
   async listHrSkills(): Promise<HrLookupItem[]> {
     const res = await firstValueFrom(this.http.get<unknown>('/api/hr/skills'));
     return this.parseLookupItems(res);
@@ -275,8 +284,8 @@ export class StrapiApi {
     await this.deleteFirstOk(paths);
   }
 
-  async listHrCandidates(): Promise<HrCandidate[]> {
-    const params = new HttpParams()
+  async listHrCandidates(options?: { onlyOpenJobPostings?: boolean }): Promise<HrCandidate[]> {
+    let params = new HttpParams()
       .set('sort', 'createdAt:desc')
       .set('pagination[pageSize]', '200')
       .set('fields[0]', 'fullName')
@@ -289,6 +298,9 @@ export class StrapiApi {
       .set('fields[7]', 'extractedData')
       .set('fields[8]', 'documentId')
       .set('populate[0]', 'jobPosting');
+    if (options?.onlyOpenJobPostings) {
+      params = params.set('filters[jobPosting][status][$eq]', 'open');
+    }
 
     const res = await firstValueFrom(this.http.get<unknown>('/api/candidates', { params }));
     const items = unwrapCollection<any>(res);
@@ -420,5 +432,16 @@ export class StrapiApi {
       );
       return tryParse(res);
     }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Public chatbot                                                     */
+  /* ------------------------------------------------------------------ */
+
+  async publicChat(messages: { role: string; content: string }[]): Promise<string> {
+    const res: any = await firstValueFrom(
+      this.http.post('/api/public/chat', { messages })
+    );
+    return res?.reply ?? '';
   }
 }

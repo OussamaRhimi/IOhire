@@ -1,121 +1,108 @@
 @startuml
-title IOhire - Global Use Case Diagram (Academic)
+title IOhire - Use Case Diagram
 left to right direction
-skinparam packageStyle rectangle
 skinparam shadowing false
+skinparam linetype ortho
+skinparam usecaseBackgroundColor #f6f6f6
+skinparam noteBackgroundColor #f9f3c8
+skinparam noteBorderColor #8a8a8a
 
-actor Candidate as A_Candidate
-actor "HR User" as A_HR
-actor "AI Service (Ollama)" as A_AI
+actor "HR User" as HR
+actor Candidate as C
+actor "AI Service (Ollama)" as AI
 
 rectangle "IOhire System" {
-  package "Public CandidateApplication Flow" {
-    usecase "UC01 - View Open JobPostings" as UC01
-    usecase "UC02 - Submit CandidateApplication" as UC02
-    usecase "UC03 - Track CandidateApplication Status" as UC03
-    usecase "UC04 - Download StandardizedCV (Public)" as UC04
-    usecase "UC05 - Delete CandidateApplication" as UC05
-    usecase "UC06 - Upload Resume" as UC06
-    usecase "UC07 - Provide Consent" as UC07
-    usecase "UC08 - Request JobRecommendations from Resume" as UC08
-    usecase "UC09 - View Top JobRecommendations" as UC09
-  }
+  usecase "Secure Storage & GDPR Controls" as U_GDPR
 
-  package "HR Recruitment and Taxonomy" {
-    usecase "UC10 - Authenticate HR User" as UC10
-    usecase "UC11 - Manage JobPostings" as UC11
-    usecase "UC12 - Search Skills in JobRequirement Form" as UC12
-    usecase "UC13 - Search Departments in JobRequirement Form" as UC13
-    usecase "UC14 - Manage Skills Taxonomy (CRUD + Search)" as UC14
-    usecase "UC15 - Manage Departments Taxonomy (CRUD + Search)" as UC15
-    usecase "UC16 - Manage CandidateApplications" as UC16
-    usecase "UC17 - Filter CandidateApplications (status, score, open JobPosting)" as UC17
-    usecase "UC18 - Select Filtered CandidateApplications" as UC18
-    usecase "UC19 - Apply Bulk CandidateApplication Status" as UC19
-    usecase "UC20 - Reprocess CandidateApplication" as UC20
-    usecase "UC21 - Select CVTemplate" as UC21
-    usecase "UC22 - Download Candidate Resume" as UC22
-    usecase "UC23 - Download StandardizedCV (HR)" as UC23
-    usecase "UC24 - View Analytics Dashboard" as UC24
-  }
+  usecase "Manage & Review Candidates" as U_ManageCandidates
+  usecase "Update Candidate Status" as U_UpdateStatus
+  usecase "Add HR Note" as U_AddNote
+  usecase "Download Candidate Resume" as U_DownloadResume
 
-  package "AI-Integrated Processing" {
-    usecase "UC30 - Process CandidateApplication" as UC30
-    usecase "UC31 - Extract Resume Text" as UC31
-    usecase "UC32 - Parse Resume into ExtractedData" as UC32
-    usecase "UC33 - Evaluate CandidateApplication Match" as UC33
-    usecase "UC34 - Generate StandardizedCV" as UC34
-    usecase "UC35 - Render CV as PDF" as UC35
-    usecase "UC36 - Extract SkillProfile for Recommendation" as UC36
-    usecase "UC37 - Rank Open JobPostings by Compatibility" as UC37
-  }
+  usecase "Create / Manage Job Postings" as U_ManageJobs
+  usecase "Define Job Posting & Requirements" as U_DefineReq
+  usecase "View / Search / Filter Applications" as U_FilterApps
+
+  usecase "Manage Skills Taxonomy" as U_ManageSkills
+  usecase "Add Skill" as U_AddSkill
+  usecase "Update Skill" as U_UpdateSkill
+  usecase "Delete Skill" as U_DeleteSkill
+
+  usecase "View Analytics Dashboard" as U_Dashboard
+  usecase "Review KPI Charts" as U_KPI
+
+  usecase "Generate Standardized CV" as U_GenerateCV
+  usecase "Reprocess Candidate Application" as U_Reprocess
+
+  usecase "Submit CV / Application" as U_Submit
+  usecase "Track Application Status" as U_Track
+  usecase "Download Standardized CV (Public)" as U_PublicCV
+  usecase "Request Job Recommendations" as U_Recommend
+  usecase "Integrate with LinkedIn / External Platforms" as U_External
 }
 
-A_Candidate --> UC01
-A_Candidate --> UC02
-A_Candidate --> UC03
-A_Candidate --> UC04
-A_Candidate --> UC05
-A_Candidate --> UC08
+' Actor associations (left users, right AI)
+HR -right-> U_GDPR
+HR -right-> U_ManageCandidates
+HR -right-> U_ManageJobs
+HR -right-> U_FilterApps
+HR -right-> U_ManageSkills
+HR -right-> U_Dashboard
+HR -right-> U_GenerateCV
 
-A_HR --> UC10
-A_HR --> UC11
-A_HR --> UC14
-A_HR --> UC15
-A_HR --> UC16
-A_HR --> UC17
-A_HR --> UC18
-A_HR --> UC19
-A_HR --> UC20
-A_HR --> UC21
-A_HR --> UC22
-A_HR --> UC23
-A_HR --> UC24
+C -right-> U_Submit
+C -right-> U_Track
+C -right-> U_Recommend
 
-A_AI --> UC32
-A_AI --> UC34
-A_AI --> UC36
+AI -left-> U_GenerateCV
+AI -left-> U_Recommend
+AI -left-> U_Reprocess
 
-UC02 ..> UC06 : <<include>>
-UC02 ..> UC07 : <<include>>
-UC08 ..> UC06 : <<include>>
-UC08 ..> UC36 : <<include>>
-UC08 ..> UC37 : <<include>>
-UC08 ..> UC09 : <<include>>
+' Generalization (structured)
+U_UpdateStatus -|> U_ManageCandidates
+U_AddNote -|> U_ManageCandidates
+U_DownloadResume -|> U_ManageCandidates
 
-UC11 ..> UC10 : <<include>>
-UC16 ..> UC10 : <<include>>
-UC17 ..> UC10 : <<include>>
-UC19 ..> UC10 : <<include>>
-UC20 ..> UC10 : <<include>>
-UC21 ..> UC10 : <<include>>
-UC22 ..> UC10 : <<include>>
-UC23 ..> UC10 : <<include>>
-UC24 ..> UC10 : <<include>>
+U_AddSkill -|> U_ManageSkills
+U_UpdateSkill -|> U_ManageSkills
+U_DeleteSkill -|> U_ManageSkills
 
-UC11 ..> UC12 : <<include>>
-UC11 ..> UC13 : <<include>>
-UC16 ..> UC17 : <<include>>
-UC19 ..> UC18 : <<include>>
-UC20 ..> UC30 : <<include>>
-UC30 ..> UC31 : <<include>>
-UC30 ..> UC32 : <<include>>
-UC30 ..> UC33 : <<include>>
-UC30 ..> UC34 : <<include>>
+' Include relations
+U_ManageJobs ..> U_DefineReq : <<include>>
+U_ManageCandidates ..> U_FilterApps : <<include>>
+U_Dashboard ..> U_KPI : <<include>>
 
-UC04 ..> UC35 : <<include>>
-UC23 ..> UC35 : <<include>>
+' Extend relations
+U_PublicCV ..> U_Track : <<extend>>
+U_Reprocess ..> U_ManageCandidates : <<extend>>
+U_Recommend ..> U_External : <<extend>>
 
-note right of UC30
-  Main asynchronous pipeline:
-  text extraction, parsing,
-  deterministic scoring,
-  standardized CV generation.
+' Layout helpers (clean vertical structure)
+U_GDPR -[hidden]down-> U_ManageCandidates
+U_ManageCandidates -[hidden]down-> U_ManageJobs
+U_ManageJobs -[hidden]down-> U_FilterApps
+U_FilterApps -[hidden]down-> U_ManageSkills
+U_ManageSkills -[hidden]down-> U_Dashboard
+U_Dashboard -[hidden]down-> U_GenerateCV
+
+U_Submit -[hidden]down-> U_Track
+U_Track -[hidden]down-> U_PublicCV
+U_PublicCV -[hidden]down-> U_Recommend
+
+note top of U_GDPR
+  Includes consent management,
+  data deletion requests,
+  access logs, and secure file handling.
 end note
 
-note right of UC19
-  Bulk action is applied on selected
-  CandidateApplications after multi-criteria filtering.
+note bottom of U_GenerateCV
+  Relies on AI model inference
+  for scoring, recommendations,
+  and standardized CV generation.
+end note
+
+note right of AI
+  Secondary actor
 end note
 
 @enduml

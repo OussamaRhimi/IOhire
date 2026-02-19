@@ -397,30 +397,8 @@ VS Code & Main development environment \\ \hline
 
 \section{Iterative Planning}
 
-\subsection{Product Backlog}
-\begin{longtable}{|p{0.8cm}|p{8.4cm}|p{1.8cm}|p{2cm}|}
-\caption{Product backlog extract} \\ \hline
-\textbf{ID} & \textbf{User Story} & \textbf{Effort} & \textbf{Priority} \\ \hline
-US1 & As an HR user, I can authenticate and access protected pages. & High & Must \\ \hline
-US2 & As a candidate, I can apply for an open job with consent and resume upload. & High & Must \\ \hline
-US3 & As a candidate, I can track my application status with a token. & Medium & Must \\ \hline
-US4 & As an HR user, I can manage job postings and requirements. & Medium & Must \\ \hline
-US5 & As an HR user, I can manage candidates, status, and notes. & High & Must \\ \hline
-US6 & As an HR user, I can trigger AI reprocessing when needed. & Medium & Should \\ \hline
-US7 & As an HR user, I can preview and assign CV templates. & Medium & Should \\ \hline
-US8 & As an admin, I can view analytics and monitoring indicators. & High & Should \\ \hline
-\end{longtable}
-
-\subsection{Sprint Planning}
-\begin{longtable}{|p{0.8cm}|p{3.3cm}|p{7.2cm}|p{2.3cm}|}
-\caption{Sprint planning} \\ \hline
-\textbf{No.} & \textbf{Sprint} & \textbf{Scope} & \textbf{Schedule} \\ \hline
-0 & Setup and Foundation & Repository organization, Docker services, initial schemas, environment bootstrap. & 17/02--14/03 \\ \hline
-1 & Public Workflow & Public job listing, candidate apply flow, token tracking, base validation. & 17/03--17/04 \\ \hline
-2 & HR Management & Authentication, job and candidate operations, dashboard baseline. & 18/04--12/05 \\ \hline
-3 & AI and Standardization & CV parsing, deterministic scoring, template output, PDF generation. & 13/05--30/05 \\ \hline
-4 & Reliability and Finalization & Reprocess flow, cron worker, watchdog, retention purge, final hardening. & Final phase \\ \hline
-\end{longtable}
+The following backlog tables are aligned with the sprint UML use-case and class diagrams. For each story, the table specifies the related UML element and the planned duration in days.
+\input{docs/tex/backlog/remaining_sprints_plan.tex}
 
 \section{Conclusion}
 This chapter detailed the working environment and planning framework used to deliver IOhire. With architecture and tooling established, the following chapters focus on implementation details, validation, and deployment.

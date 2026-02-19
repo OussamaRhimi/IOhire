@@ -2,6 +2,84 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+function toPositiveInt(value: unknown): number | null {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return null;
+  const id = Math.trunc(n);
+  return id > 0 ? id : null;
+}
+
+function getSingleUpload(resume: any): any | null {
+  if (!resume) return null;
+  if (Array.isArray(resume)) return resume[0] ?? null;
+  if (resume?.data) return resume.data;
+  return resume;
+}
+
+async function resolveJobPostingIds(strapi: any, where: unknown): Promise<number[]> {
+  const filters = isObject(where) ? (where as Record<string, unknown>) : undefined;
+  const jobs = (await strapi.entityService.findMany('api::job-posting.job-posting', {
+    ...(filters ? { filters: filters as any } : {}),
+    fields: ['id'] as any,
+    limit: 10_000,
+  })) as any[];
+
+  const ids = new Set<number>();
+  for (const job of jobs ?? []) {
+    const id = toPositiveInt(job?.id);
+    if (id) ids.add(id);
+  }
+  return Array.from(ids);
+}
+
+async function deleteCandidatesForJobPostings(strapi: any, jobIds: number[]) {
+  if (!Array.isArray(jobIds) || jobIds.length === 0) return;
+  const uploadSvc = strapi.plugin('upload').service('upload');
+  const targetJobIds = Array.from(new Set(jobIds.filter((id) => Number.isFinite(id) && id > 0).map((id) => Math.trunc(id))));
+  if (targetJobIds.length === 0) return;
+
+  // Delete in batches so large datasets are handled without loading everything at once.
+  for (;;) {
+    const batch = (await strapi.entityService.findMany('api::candidate.candidate', {
+      filters: { jobPosting: { id: { $in: targetJobIds } } } as any,
+      fields: ['id'] as any,
+      populate: ['resume'] as any,
+      sort: { id: 'asc' } as any,
+      limit: 200,
+    })) as any[];
+
+    if (!Array.isArray(batch) || batch.length === 0) break;
+
+    const resumeIds = new Set<number>();
+    let deletedCount = 0;
+
+    for (const candidate of batch) {
+      const candidateId = toPositiveInt(candidate?.id);
+      if (!candidateId) continue;
+
+      const resume = getSingleUpload(candidate?.resume);
+      const resumeId = toPositiveInt(resume?.id);
+      if (resumeId) resumeIds.add(resumeId);
+
+      await strapi.entityService.delete('api::candidate.candidate', candidateId);
+      deletedCount += 1;
+    }
+
+    for (const resumeId of resumeIds) {
+      try {
+        const file = await uploadSvc.findOne(resumeId);
+        if (file) await uploadSvc.remove(file);
+      } catch (error: any) {
+        strapi?.log?.warn?.(
+          `[job-posting] Failed to remove resume file ${resumeId} during cascade delete: ${error?.message ?? error}`
+        );
+      }
+    }
+
+    if (deletedCount === 0 || batch.length < 200) break;
+  }
+}
+
 function toStringArray(value: unknown): string[] | null {
   if (value == null) return null;
   if (Array.isArray(value)) {
@@ -96,6 +174,20 @@ export default {
     if (!data) return;
     if (!('requirements' in data)) return;
     data.requirements = normalizeRequirements(data.requirements);
+  },
+  async beforeDelete(event: { params?: { where?: unknown } }) {
+    const where = event?.params?.where;
+    const strapi = (globalThis as any).strapi;
+    if (!strapi?.entityService) return;
+    const jobIds = await resolveJobPostingIds(strapi, where);
+    await deleteCandidatesForJobPostings(strapi, jobIds);
+  },
+  async beforeDeleteMany(event: { params?: { where?: unknown } }) {
+    const where = event?.params?.where;
+    const strapi = (globalThis as any).strapi;
+    if (!strapi?.entityService) return;
+    const jobIds = await resolveJobPostingIds(strapi, where);
+    await deleteCandidatesForJobPostings(strapi, jobIds);
   },
 };
 

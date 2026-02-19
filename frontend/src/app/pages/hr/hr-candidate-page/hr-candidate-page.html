@@ -69,7 +69,7 @@
                   <div class="candidate-item__icon">W</div>
                   <div>
                     <div class="strong">{{ r.title || 'Role' }}</div>
-                    <div class="muted">{{ r.company || '-' }} | {{ r.startRaw || '-' }} - {{ r.endRaw || '-' }}</div>
+                    <div class="muted">{{ r.company || '-' }}@if (r.dateRange) { | {{ r.dateRange }}}</div>
                     @if (r.duration) {
                       <div class="small muted">Duration: {{ r.duration }}</div>
                     }
@@ -117,6 +117,117 @@
             </div>
           }
         </section>
+
+        <!-- Score Explanation Card -->
+        @if (scoreExplanation(); as exp) {
+          <section class="card candidate-panel score-explanation">
+            <div class="candidate-panel__head">
+              <h2>Score Explanation</h2>
+              <span class="score-quality-badge score-quality-badge--{{ exp.qualityClass }}">{{ exp.qualityLabel }}</span>
+            </div>
+
+            <p class="score-explanation__formula muted small">
+              Final Score = Fit Score × 75% + Completeness Score × 25%
+            </p>
+
+            <!-- Score bars -->
+            <div class="score-bars">
+              <div class="score-bar-row">
+                <div class="score-bar-label">Final Score</div>
+                <div class="score-bar-track">
+                  <div class="score-bar-fill score-bar-fill--final" [style.width.%]="exp.score"></div>
+                </div>
+                <div class="score-bar-value">{{ exp.score }}</div>
+              </div>
+              <div class="score-bar-row">
+                <div class="score-bar-label">Fit Score</div>
+                <div class="score-bar-track">
+                  <div class="score-bar-fill score-bar-fill--fit" [style.width.%]="exp.fitScore"></div>
+                </div>
+                <div class="score-bar-value">{{ exp.fitScore }}</div>
+              </div>
+              <div class="score-bar-row">
+                <div class="score-bar-label">Completeness</div>
+                <div class="score-bar-track">
+                  <div class="score-bar-fill score-bar-fill--completeness" [style.width.%]="exp.completenessScore"></div>
+                </div>
+                <div class="score-bar-value">{{ exp.completenessScore }}</div>
+              </div>
+            </div>
+
+            <!-- Experience -->
+            @if (exp.experienceYears != null) {
+              <div class="score-detail-section">
+                <div class="score-detail-heading">Experience</div>
+                <div class="score-detail-row">
+                  <span>Detected experience:</span>
+                  <strong>{{ exp.experienceYears }} year{{ exp.experienceYears === 1 ? '' : 's' }}</strong>
+                </div>
+                @if (exp.minYears != null) {
+                  <div class="score-detail-row">
+                    <span>Required minimum:</span>
+                    <strong>{{ exp.minYears }} year{{ exp.minYears === 1 ? '' : 's' }}</strong>
+                    @if (exp.experienceMet) {
+                      <span class="score-tag score-tag--ok">Met</span>
+                    } @else {
+                      <span class="score-tag score-tag--warn">Not met</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Required Skills -->
+            @if (exp.matchedSkills.length > 0 || exp.missingSkills.length > 0) {
+              <div class="score-detail-section">
+                <div class="score-detail-heading">Required Skills ({{ exp.matchedSkills.length }}/{{ exp.matchedSkills.length + exp.missingSkills.length }})</div>
+                @if (exp.matchedSkills.length > 0) {
+                  <div class="score-chip-wrap">
+                    @for (s of exp.matchedSkills; track s) {
+                      <span class="score-chip score-chip--matched">{{ s }}</span>
+                    }
+                  </div>
+                }
+                @if (exp.missingSkills.length > 0) {
+                  <div class="score-chip-wrap">
+                    @for (s of exp.missingSkills; track s) {
+                      <span class="score-chip score-chip--missing">{{ s }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Nice-to-Have Skills -->
+            @if (exp.matchedNiceToHave.length > 0 || exp.missingNiceToHave.length > 0) {
+              <div class="score-detail-section">
+                <div class="score-detail-heading">Nice-to-Have Skills ({{ exp.matchedNiceToHave.length }}/{{ exp.matchedNiceToHave.length + exp.missingNiceToHave.length }})</div>
+                @if (exp.matchedNiceToHave.length > 0) {
+                  <div class="score-chip-wrap">
+                    @for (s of exp.matchedNiceToHave; track s) {
+                      <span class="score-chip score-chip--matched">{{ s }}</span>
+                    }
+                  </div>
+                }
+                @if (exp.missingNiceToHave.length > 0) {
+                  <div class="score-chip-wrap">
+                    @for (s of exp.missingNiceToHave; track s) {
+                      <span class="score-chip score-chip--missing">{{ s }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Notes -->
+            @if (exp.notes) {
+              <div class="score-detail-section">
+                <div class="score-detail-heading">AI Notes</div>
+                <p class="score-notes">{{ exp.notes }}</p>
+              </div>
+            }
+          </section>
+        }
       </div>
 
       <aside class="candidate-detail-side">

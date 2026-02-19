@@ -144,5 +144,132 @@
         <canvas #chartMissingFields></canvas>
       </div>
     </div>
+
+    <!-- ============================================================= -->
+    <!--  Job Posting Comparison                                        -->
+    <!-- ============================================================= -->
+    <div class="cmp-section" appRevealOnScroll [revealDelay]="120">
+      <div class="cmp-header">
+        <div class="cmp-header__title">
+          <span class="cmp-header__icon"><lucide-icon [img]="iconCompare" [size]="18" /></span>
+          <div>
+            <h2>Compare Job Postings</h2>
+            <p class="muted small">Select two job postings to compare candidate quality side-by-side.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="cmp-selectors">
+        <div class="cmp-select-wrap">
+          <label class="cmp-label cmp-label--a" for="cmpJobA">Job A</label>
+          <select id="cmpJobA" class="cmp-select" [ngModel]="compareJobA() ?? ''" (ngModelChange)="onCompareJobChange('A', $event)">
+            <option value="">— Select a job posting —</option>
+            @for (job of comparableJobs(); track job.id) {
+              <option [value]="job.id" [disabled]="job.id === compareJobB()">{{ job.title ?? 'Untitled' }}</option>
+            }
+          </select>
+        </div>
+        <span class="cmp-vs">vs</span>
+        <div class="cmp-select-wrap">
+          <label class="cmp-label cmp-label--b" for="cmpJobB">Job B</label>
+          <select id="cmpJobB" class="cmp-select" [ngModel]="compareJobB() ?? ''" (ngModelChange)="onCompareJobChange('B', $event)">
+            <option value="">— Select a job posting —</option>
+            @for (job of comparableJobs(); track job.id) {
+              <option [value]="job.id" [disabled]="job.id === compareJobA()">{{ job.title ?? 'Untitled' }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (compareReady()) {
+        @if (cmpData(); as cmp) {
+          <!-- KPI comparison cards -->
+          <div class="cmp-kpi-row">
+            <div class="cmp-kpi-card cmp-kpi-card--a">
+              <div class="cmp-kpi-card__label">{{ cmp.titleA }}</div>
+              <div class="cmp-kpi-card__grid">
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.countA }}</span><span class="cmp-kpi-item__lbl">Candidates</span></div>
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.avgA }}</span><span class="cmp-kpi-item__lbl">Avg Score</span></div>
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.medianA }}</span><span class="cmp-kpi-item__lbl">Median</span></div>
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.pctAbove60A }}%</span><span class="cmp-kpi-item__lbl">≥ 60</span></div>
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.pctAbove80A }}%</span><span class="cmp-kpi-item__lbl">≥ 80</span></div>
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.shortlistedPctA }}%</span><span class="cmp-kpi-item__lbl">Shortlisted</span></div>
+              </div>
+            </div>
+            <div class="cmp-kpi-card cmp-kpi-card--b">
+              <div class="cmp-kpi-card__label">{{ cmp.titleB }}</div>
+              <div class="cmp-kpi-card__grid">
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.countB }}</span><span class="cmp-kpi-item__lbl">Candidates</span></div>
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.avgB }}</span><span class="cmp-kpi-item__lbl">Avg Score</span></div>
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.medianB }}</span><span class="cmp-kpi-item__lbl">Median</span></div>
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.pctAbove60B }}%</span><span class="cmp-kpi-item__lbl">≥ 60</span></div>
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.pctAbove80B }}%</span><span class="cmp-kpi-item__lbl">≥ 80</span></div>
+                <div class="cmp-kpi-item"><span class="cmp-kpi-item__val">{{ cmp.shortlistedPctB }}%</span><span class="cmp-kpi-item__lbl">Shortlisted</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts row 1 -->
+          <div class="analytics-grid">
+            <div class="card analytics-chart-card">
+              <div class="analytics-card-head">
+                <div>
+                  <div class="strong">Score distribution (overlay)</div>
+                  <div class="muted small">Histogram comparison</div>
+                </div>
+              </div>
+              <div class="analytics-chart-h"><canvas #chartCmpScoreHist></canvas></div>
+            </div>
+            <div class="card analytics-chart-card">
+              <div class="analytics-card-head">
+                <div>
+                  <div class="strong">Score metrics</div>
+                  <div class="muted small">Average, median &amp; percentages</div>
+                </div>
+              </div>
+              <div class="analytics-chart-h"><canvas #chartCmpScoreBox></canvas></div>
+            </div>
+          </div>
+
+          <!-- Charts row 2 -->
+          <div class="analytics-grid">
+            <div class="card analytics-chart-card">
+              <div class="analytics-card-head">
+                <div>
+                  <div class="strong">Status breakdown</div>
+                  <div class="muted small">Candidates per status</div>
+                </div>
+              </div>
+              <div class="analytics-chart-h"><canvas #chartCmpStatus></canvas></div>
+            </div>
+            <div class="card analytics-chart-card">
+              <div class="analytics-card-head">
+                <div>
+                  <div class="strong">Quality radar</div>
+                  <div class="muted small">Multi-dimensional quality comparison</div>
+                </div>
+              </div>
+              <div class="analytics-chart-h"><canvas #chartCmpRadar></canvas></div>
+            </div>
+          </div>
+
+          <!-- Charts row 3 -->
+          <div class="card analytics-chart-card">
+            <div class="analytics-card-head">
+              <div>
+                <div class="strong">Missing fields comparison</div>
+                <div class="muted small">Top fields candidates are missing</div>
+              </div>
+            </div>
+            <div class="analytics-chart-h analytics-chart-h--tall"><canvas #chartCmpMissing></canvas></div>
+          </div>
+        }
+      } @else {
+        <div class="cmp-placeholder">
+          <lucide-icon [img]="iconCompare" [size]="32" />
+          <p>Select two different job postings above to see comparative charts.</p>
+        </div>
+      }
+    </div>
   }
 </section>

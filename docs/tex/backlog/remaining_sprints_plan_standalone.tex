@@ -1,0 +1,99 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{xltabular}
+\usepackage{array}
+\usepackage{lmodern}
+\usepackage{ragged2e}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\renewcommand{\arraystretch}{1.12}
+
+\newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\Centering\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+
+\begin{document}
+
+\section*{Remaining PFE Sprint Backlog Report}
+
+\footnotesize
+
+\begin{xltabular}{\textwidth}{|L{2.2cm}|L{3.0cm}|L{2.4cm}|Y|}
+\caption{Remaining PFE Timeline After Sprint 0} \\ \hline
+\textbf{Sprint} & \textbf{Duration} & \textbf{Cumulative} & \textbf{Main Goal} \\ \hline
+Sprint 1 & 28 days (4 weeks) & Day 1 to Day 28 & HR foundation, taxonomy, and JobPosting management. \\ \hline
+Sprint 2 & 28 days (4 weeks) & Day 29 to Day 56 & Public CandidateApplication flow and HR review operations. \\ \hline
+Sprint 3 & 28 days (4 weeks) & Day 57 to Day 84 & AI processing, template/PDF output, and recommendations. \\ \hline
+Sprint 4 & 21 days (3 weeks) & Day 85 to Day 105 & Decision support filtering, bulk actions, analytics, AI monitoring. \\ \hline
+\textbf{Total remaining} & \textbf{105 days} &  &  \\ \hline
+\end{xltabular}
+
+\subsection*{Sprint 1 Product Backlog}
+\begin{xltabular}{\textwidth}{|L{1.5cm}|Y|C{1.8cm}|C{1.5cm}|}
+\caption{Sprint 1 Product Backlog (28 days)} \\ \hline
+\textbf{Story} & \textbf{Product Backlog Item} & \textbf{Duration (days)} & \textbf{Priority} \\ \hline
+S1-US1 & HR authentication and session flow for protected HR access. & 4 & High \\ \hline
+S1-US2 & Skills taxonomy CRUD (create, update, delete) for reusable requirements. & 4 & High \\ \hline
+S1-US3 & Skills search and autocomplete in job requirement forms. & 3 & Medium \\ \hline
+S1-US4 & Departments taxonomy CRUD for organizational classification. & 3 & Medium \\ \hline
+S1-US5 & Departments search and autocomplete in job requirement forms. & 2 & Low \\ \hline
+S1-US6 & Create and update job postings with requirement fields (required skills, nice-to-have skills, departments, minimum experience, notes). & 6 & High \\ \hline
+S1-US7 & Job posting status transitions (draft, open, closed). & 3 & Medium \\ \hline
+S1-US8 & Delete a job posting and enforce integrity checks. & 3 & Low \\ \hline
+\textbf{Total} & \textbf{Sprint 1 duration} & \textbf{28} &  \\ \hline
+\end{xltabular}
+
+\subsection*{Sprint 2 Product Backlog}
+\begin{xltabular}{\textwidth}{|L{1.5cm}|Y|C{1.8cm}|C{1.5cm}|}
+\caption{Sprint 2 Product Backlog (28 days)} \\ \hline
+\textbf{Story} & \textbf{Product Backlog Item} & \textbf{Duration (days)} & \textbf{Priority} \\ \hline
+S2-US1 & Public listing of open job postings only. & 3 & Medium \\ \hline
+S2-US2 & Candidate application submission with resume upload and file validation. & 5 & High \\ \hline
+S2-US3 & Consent capture and retention metadata at submission time. & 2 & High \\ \hline
+S2-US4 & Token-based application tracking endpoint and UI flow. & 3 & High \\ \hline
+S2-US5 & Public self-service deletion of application by token. & 2 & Medium \\ \hline
+S2-US6 & HR listing and review queue for candidate applications. & 4 & High \\ \hline
+S2-US7 & Candidate detail view and resume download for HR users. & 3 & Medium \\ \hline
+S2-US8 & Update candidate application workflow status. & 3 & High \\ \hline
+S2-US9 & HR notes management for each candidate application. & 3 & Medium \\ \hline
+\textbf{Total} & \textbf{Sprint 2 duration} & \textbf{28} &  \\ \hline
+\end{xltabular}
+
+\subsection*{Sprint 3 Product Backlog}
+\begin{xltabular}{\textwidth}{|L{1.5cm}|Y|C{1.8cm}|C{1.5cm}|}
+\caption{Sprint 3 Product Backlog (28 days)} \\ \hline
+\textbf{Story} & \textbf{Product Backlog Item} & \textbf{Duration (days)} & \textbf{Priority} \\ \hline
+S3-US1 & Automatic candidate application processing pipeline orchestration with status transitions. & 4 & High \\ \hline
+S3-US2 & Resume text extraction from supported document formats. & 3 & High \\ \hline
+S3-US3 & Parse CV text into normalized extracted data. & 4 & High \\ \hline
+S3-US4 & Match evaluation (fit score, completeness score, total score, missing skills and fields). & 4 & High \\ \hline
+S3-US5 & Generate standardized CV content in markdown format. & 4 & High \\ \hline
+S3-US6 & CV template catalog and candidate-level template selection. & 3 & Medium \\ \hline
+S3-US7 & Download standardized CV as PDF for HR and public token flows. & 2 & Medium \\ \hline
+S3-US8 & Reprocess candidate application on HR demand. & 2 & Medium \\ \hline
+S3-US9 & Resume-based job recommendation (skill extraction, ranking, top matches). & 2 & Low \\ \hline
+\textbf{Total} & \textbf{Sprint 3 duration} & \textbf{28} &  \\ \hline
+\end{xltabular}
+
+\subsection*{Sprint 4 Product Backlog}
+\begin{xltabular}{\textwidth}{|L{1.5cm}|Y|C{1.8cm}|C{1.5cm}|}
+\caption{Sprint 4 Product Backlog (21 days)} \\ \hline
+\textbf{Story} & \textbf{Product Backlog Item} & \textbf{Duration (days)} & \textbf{Priority} \\ \hline
+S4-US1 & Multi-criteria filtering of candidate applications. & 4 & High \\ \hline
+S4-US2 & Score-threshold filtering support (operators and threshold). & 2 & Medium \\ \hline
+S4-US3 & Filter candidate applications by open job posting. & 2 & Medium \\ \hline
+S4-US4 & Selection workflow on filtered candidate applications. & 2 & Medium \\ \hline
+S4-US5 & Bulk status update on selected candidates. & 3 & High \\ \hline
+S4-US6 & Analytics dashboard with KPIs and charts (status, score, submissions). & 4 & High \\ \hline
+S4-US7 & AI processing health monitoring and stuck-processing supervision. & 2 & Medium \\ \hline
+S4-US8 & Use AI-derived match score in HR decision support and filtering. & 2 & Medium \\ \hline
+\textbf{Total} & \textbf{Sprint 4 duration} & \textbf{21} &  \\ \hline
+\end{xltabular}
+
+\end{document}

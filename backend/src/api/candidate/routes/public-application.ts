@@ -30,5 +30,11 @@ export default {
       handler: 'candidate.publicDelete',
       config: { auth: false },
     },
+    {
+      method: 'POST',
+      path: '/public/chat',
+      handler: 'candidate.publicChat',
+      config: { auth: false },
+    },
   ],
 };

@@ -42,6 +42,19 @@ export class HrTemplatesPage implements OnDestroy {
     try {
       this.loading.set(true);
       this.error.set(null);
+
+      // Load server-side default to stay in sync
+      try {
+        const serverDefault = await this.api.getDefaultTemplate();
+        if (serverDefault && serverDefault !== 'standard') {
+          setHrDefaultCvTemplateKey(serverDefault);
+          this.defaultKey.set(serverDefault);
+          this.selectedKey.set(serverDefault);
+        }
+      } catch {
+        // ignore – fall back to localStorage
+      }
+
       const templates = await this.api.listHrCvTemplates();
       this.templates.set(templates);
 
@@ -64,7 +77,7 @@ export class HrTemplatesPage implements OnDestroy {
   }
 
   async onSelectTemplate(nextKey: string) {
-    this.persistDefault(nextKey);
+    await this.persistDefault(nextKey);
     this.selectedKey.set(nextKey);
     await this.loadSample(nextKey);
   }
@@ -73,9 +86,14 @@ export class HrTemplatesPage implements OnDestroy {
     return this.defaultKey() === key;
   }
 
-  private persistDefault(key: string) {
+  private async persistDefault(key: string) {
     setHrDefaultCvTemplateKey(key);
     this.defaultKey.set(key);
+    try {
+      await this.api.setDefaultTemplate(key);
+    } catch {
+      // localStorage already saved; server sync is best-effort
+    }
   }
 
   private async loadSample(key: string) {

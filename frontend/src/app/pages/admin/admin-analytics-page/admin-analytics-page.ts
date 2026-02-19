@@ -9,9 +9,10 @@ import {
   signal,
   ViewChild,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import { LucideAngularModule, type LucideIconData } from 'lucide-angular';
-import { Activity, BarChart3, BriefcaseBusiness, Clock3, RefreshCw, Target, Users } from 'lucide-angular/src/icons';
+import { Activity, BarChart3, BriefcaseBusiness, Clock3, GitCompareArrows, RefreshCw, Target, Users } from 'lucide-angular/src/icons';
 import { formatDateTime } from '../../../core/format/date';
 import { toErrorMessage } from '../../../core/http/http-error';
 import { PortalThemeService } from '../../../core/theme/portal-theme.service';
@@ -72,7 +73,7 @@ function themeVars() {
 
 @Component({
   selector: 'app-admin-analytics-page',
-  imports: [LucideAngularModule, RevealOnScrollDirective],
+  imports: [LucideAngularModule, RevealOnScrollDirective, FormsModule],
   templateUrl: './admin-analytics-page.html',
   styleUrl: './admin-analytics-page.css',
 })
@@ -128,8 +129,118 @@ export class AdminAnalyticsPage implements AfterViewInit, OnDestroy {
   @ViewChild('chartCandidatesByJob', { static: false }) chartCandidatesByJob?: ElementRef<HTMLCanvasElement>;
   @ViewChild('chartMissingFields', { static: false }) chartMissingFields?: ElementRef<HTMLCanvasElement>;
 
+  // -- Compare job postings --
+  @ViewChild('chartCmpScoreHist', { static: false }) chartCmpScoreHist?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('chartCmpStatus', { static: false }) chartCmpStatus?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('chartCmpRadar', { static: false }) chartCmpRadar?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('chartCmpMissing', { static: false }) chartCmpMissing?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('chartCmpScoreBox', { static: false }) chartCmpScoreBox?: ElementRef<HTMLCanvasElement>;
+
   private viewReady = false;
   private charts: Chart[] = [];
+  private compareCharts: Chart[] = [];
+
+  readonly compareJobA = signal<number | null>(null);
+  readonly compareJobB = signal<number | null>(null);
+  readonly compareReady = computed(() => {
+    const a = this.compareJobA();
+    const b = this.compareJobB();
+    return a != null && b != null && a !== b;
+  });
+
+  /** Available jobs for the comparator dropdowns */
+  readonly comparableJobs = computed(() => {
+    return this.jobs().filter((j) => {
+      const count = this.candidates().filter((c) => c.jobId === j.id).length;
+      return count > 0;
+    });
+  });
+
+  /** Compute comparison data for the two selected job postings */
+  readonly cmpData = computed(() => {
+    const a = this.compareJobA();
+    const b = this.compareJobB();
+    if (a == null || b == null || a === b) return null;
+
+    const allCandidates = this.candidates();
+    const candA = allCandidates.filter((c) => c.jobId === a);
+    const candB = allCandidates.filter((c) => c.jobId === b);
+    const jobA = this.jobs().find((j) => j.id === a);
+    const jobB = this.jobs().find((j) => j.id === b);
+    if (!jobA || !jobB) return null;
+
+    const scoresFn = (cands: HrCandidate[]) =>
+      cands.map((c) => c.score).filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+    const avgFn = (nums: number[]) => (nums.length ? Math.round((nums.reduce((s, v) => s + v, 0) / nums.length) * 10) / 10 : 0);
+    const medianFn = (nums: number[]) => {
+      if (!nums.length) return 0;
+      const sorted = [...nums].sort((x, y) => x - y);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 !== 0 ? sorted[mid] : Math.round(((sorted[mid - 1] + sorted[mid]) / 2) * 10) / 10;
+    };
+    const histFn = (cands: HrCandidate[]) => {
+      const h = [0, 0, 0, 0, 0];
+      for (const c of cands) {
+        const s = c.score;
+        if (typeof s !== 'number' || !Number.isFinite(s)) continue;
+        const idx = Math.min(4, Math.floor(clamp(s, 0, 100) / 20));
+        h[idx]++;
+      }
+      return h;
+    };
+    const statusCountFn = (cands: HrCandidate[]) => {
+      const m: Record<string, number> = {};
+      for (const c of cands) inc(m, c.status ?? 'unknown');
+      return m;
+    };
+    const missingFn = (cands: HrCandidate[]) => {
+      const m: Record<string, number> = {};
+      for (const c of cands) for (const f of c.missing ?? []) inc(m, f);
+      return m;
+    };
+    const pctAbove = (cands: HrCandidate[], threshold: number) => {
+      const scores = scoresFn(cands);
+      if (!scores.length) return 0;
+      return Math.round((scores.filter((s) => s >= threshold).length / scores.length) * 100);
+    };
+    const avgProcessingFn = (cands: HrCandidate[]) => {
+      const ms = cands
+        .filter((c) => c.status === 'processed' || c.status === 'error')
+        .map((c) => safeMsBetween(c.createdAt, c.updatedAt))
+        .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+      return ms.length ? Math.round(ms.reduce((s, v) => s + v, 0) / ms.length / 60000) : 0;
+    };
+
+    const scoresA = scoresFn(candA);
+    const scoresB = scoresFn(candB);
+
+    return {
+      titleA: jobA.title ?? 'Job A',
+      titleB: jobB.title ?? 'Job B',
+      countA: candA.length,
+      countB: candB.length,
+      avgA: avgFn(scoresA),
+      avgB: avgFn(scoresB),
+      medianA: medianFn(scoresA),
+      medianB: medianFn(scoresB),
+      histA: histFn(candA),
+      histB: histFn(candB),
+      statusA: statusCountFn(candA),
+      statusB: statusCountFn(candB),
+      missingA: missingFn(candA),
+      missingB: missingFn(candB),
+      pctAbove60A: pctAbove(candA, 60),
+      pctAbove60B: pctAbove(candB, 60),
+      pctAbove80A: pctAbove(candA, 80),
+      pctAbove80B: pctAbove(candB, 80),
+      shortlistedPctA: candA.length ? Math.round((candA.filter((c) => c.status === 'shortlisted' || c.status === 'hired').length / candA.length) * 100) : 0,
+      shortlistedPctB: candB.length ? Math.round((candB.filter((c) => c.status === 'shortlisted' || c.status === 'hired').length / candB.length) * 100) : 0,
+      avgProcessingA: avgProcessingFn(candA),
+      avgProcessingB: avgProcessingFn(candB),
+      missingAvgA: candA.length ? Math.round(candA.reduce((s, c) => s + (c.missing?.length ?? 0), 0) / candA.length * 10) / 10 : 0,
+      missingAvgB: candB.length ? Math.round(candB.reduce((s, c) => s + (c.missing?.length ?? 0), 0) / candB.length * 10) / 10 : 0,
+    };
+  });
 
   formatDateTime = formatDateTime;
   readonly iconRefresh: LucideIconData = RefreshCw;
@@ -139,12 +250,19 @@ export class AdminAnalyticsPage implements AfterViewInit, OnDestroy {
   readonly iconTarget: LucideIconData = Target;
   readonly iconClock: LucideIconData = Clock3;
   readonly iconChart: LucideIconData = BarChart3;
+  readonly iconCompare: LucideIconData = GitCompareArrows;
 
   constructor() {
     effect(() => {
       // Re-render on theme change
       this.theme.theme();
       this.renderCharts();
+    });
+    effect(() => {
+      // Re-render comparison charts when selection or theme changes
+      this.theme.theme();
+      this.cmpData();
+      window.setTimeout(() => this.renderCompareCharts(), 0);
     });
   }
 
@@ -160,6 +278,14 @@ export class AdminAnalyticsPage implements AfterViewInit, OnDestroy {
   ngOnDestroy() {
     for (const c of this.charts) c.destroy();
     this.charts = [];
+    for (const c of this.compareCharts) c.destroy();
+    this.compareCharts = [];
+  }
+
+  onCompareJobChange(slot: 'A' | 'B', value: string) {
+    const id = value ? Number(value) : null;
+    if (slot === 'A') this.compareJobA.set(id);
+    else this.compareJobB.set(id);
   }
 
   async refresh() {
@@ -448,6 +574,196 @@ export class AdminAnalyticsPage implements AfterViewInit, OnDestroy {
       new Chart(this.chartScoreHistogram!.nativeElement, histogramConfig),
       new Chart(this.chartCandidatesByJob!.nativeElement, byJobConfig),
       new Chart(this.chartMissingFields!.nativeElement, missingConfig)
+    );
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Compare charts                                                     */
+  /* ------------------------------------------------------------------ */
+  private destroyCompareCharts() {
+    for (const c of this.compareCharts) c.destroy();
+    this.compareCharts = [];
+  }
+
+  private renderCompareCharts() {
+    if (!this.viewReady) return;
+    const data = this.cmpData();
+    if (!data) { this.destroyCompareCharts(); return; }
+
+    const el = (r?: ElementRef<HTMLCanvasElement>) => r?.nativeElement ?? null;
+    if (!el(this.chartCmpScoreHist) || !el(this.chartCmpStatus) || !el(this.chartCmpRadar) || !el(this.chartCmpMissing) || !el(this.chartCmpScoreBox)) return;
+
+    const colors = themeVars();
+    const gridColor = colors.border;
+    const tickColor = colors.muted;
+    const colorA = 'rgba(59,130,246,0.7)';   // blue
+    const colorABg = 'rgba(59,130,246,0.18)';
+    const colorB = 'rgba(220,38,38,0.7)';     // red
+    const colorBBg = 'rgba(220,38,38,0.18)';
+
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: colors.muted } as any },
+        tooltip: { enabled: true } as any,
+      },
+    } as const;
+
+    // 1) Overlaid score histogram
+    const histLabels = ['0–19', '20–39', '40–59', '60–79', '80–100'];
+    const scoreHistConfig: ChartConfiguration<'bar'> = {
+      type: 'bar',
+      data: {
+        labels: histLabels,
+        datasets: [
+          { label: data.titleA, data: data.histA, backgroundColor: colorA, borderColor: colorA, borderWidth: 1 },
+          { label: data.titleB, data: data.histB, backgroundColor: colorB, borderColor: colorB, borderWidth: 1 },
+        ],
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          x: { ticks: { color: tickColor } as any, grid: { color: gridColor } as any },
+          y: { ticks: { color: tickColor, precision: 0 } as any, grid: { color: gridColor } as any },
+        },
+      },
+    };
+
+    // 2) Status breakdown side-by-side
+    const allStatuses = Array.from(new Set([
+      ...Object.keys(data.statusA),
+      ...Object.keys(data.statusB),
+    ])).sort();
+    const statusConfig: ChartConfiguration<'bar'> = {
+      type: 'bar',
+      data: {
+        labels: allStatuses,
+        datasets: [
+          { label: data.titleA, data: allStatuses.map((s) => data.statusA[s] ?? 0), backgroundColor: colorA, borderColor: colorA, borderWidth: 1 },
+          { label: data.titleB, data: allStatuses.map((s) => data.statusB[s] ?? 0), backgroundColor: colorB, borderColor: colorB, borderWidth: 1 },
+        ],
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          x: { ticks: { color: tickColor } as any, grid: { color: gridColor } as any },
+          y: { ticks: { color: tickColor, precision: 0 } as any, grid: { color: gridColor } as any },
+        },
+      },
+    };
+
+    // 3) Radar: quality dimensions
+    const radarConfig: ChartConfiguration<'radar'> = {
+      type: 'radar',
+      data: {
+        labels: ['Avg Score', 'Median Score', '% ≥ 60', '% ≥ 80', 'Shortlisted %', 'Completeness'],
+        datasets: [
+          {
+            label: data.titleA,
+            data: [
+              data.avgA,
+              data.medianA,
+              data.pctAbove60A,
+              data.pctAbove80A,
+              data.shortlistedPctA,
+              Math.max(0, 100 - data.missingAvgA * 10), // completeness inverse of missing
+            ],
+            borderColor: colorA,
+            backgroundColor: colorABg,
+            pointBackgroundColor: colorA,
+          },
+          {
+            label: data.titleB,
+            data: [
+              data.avgB,
+              data.medianB,
+              data.pctAbove60B,
+              data.pctAbove80B,
+              data.shortlistedPctB,
+              Math.max(0, 100 - data.missingAvgB * 10),
+            ],
+            borderColor: colorB,
+            backgroundColor: colorBBg,
+            pointBackgroundColor: colorB,
+          },
+        ],
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          r: {
+            beginAtZero: true,
+            max: 100,
+            ticks: { color: tickColor, backdropColor: 'transparent' } as any,
+            grid: { color: gridColor } as any,
+            angleLines: { color: gridColor } as any,
+            pointLabels: { color: colors.text, font: { size: 11 } } as any,
+          },
+        },
+      },
+    };
+
+    // 4) Missing fields comparison (top 8 from both)
+    const allMissing: Record<string, { a: number; b: number }> = {};
+    for (const [k, v] of Object.entries(data.missingA)) {
+      if (!allMissing[k]) allMissing[k] = { a: 0, b: 0 };
+      allMissing[k].a = v;
+    }
+    for (const [k, v] of Object.entries(data.missingB)) {
+      if (!allMissing[k]) allMissing[k] = { a: 0, b: 0 };
+      allMissing[k].b = v;
+    }
+    const topMissingKeys = Object.entries(allMissing)
+      .sort((x, y) => (y[1].a + y[1].b) - (x[1].a + x[1].b))
+      .slice(0, 8)
+      .map(([k]) => k);
+
+    const missingConfig: ChartConfiguration<'bar'> = {
+      type: 'bar',
+      data: {
+        labels: topMissingKeys,
+        datasets: [
+          { label: data.titleA, data: topMissingKeys.map((k) => allMissing[k]?.a ?? 0), backgroundColor: colorA, borderColor: colorA, borderWidth: 1 },
+          { label: data.titleB, data: topMissingKeys.map((k) => allMissing[k]?.b ?? 0), backgroundColor: colorB, borderColor: colorB, borderWidth: 1 },
+        ],
+      },
+      options: {
+        ...commonOptions,
+        indexAxis: 'y' as const,
+        scales: {
+          x: { ticks: { color: tickColor, precision: 0 } as any, grid: { color: gridColor } as any },
+          y: { ticks: { color: tickColor } as any, grid: { color: gridColor } as any },
+        },
+      },
+    };
+
+    // 5) Average score bar comparison (simple grouped bar)
+    const scoreBoxConfig: ChartConfiguration<'bar'> = {
+      type: 'bar',
+      data: {
+        labels: ['Avg Score', 'Median Score', '% Score ≥ 60', '% Score ≥ 80'],
+        datasets: [
+          { label: data.titleA, data: [data.avgA, data.medianA, data.pctAbove60A, data.pctAbove80A], backgroundColor: colorA, borderColor: colorA, borderWidth: 1 },
+          { label: data.titleB, data: [data.avgB, data.medianB, data.pctAbove60B, data.pctAbove80B], backgroundColor: colorB, borderColor: colorB, borderWidth: 1 },
+        ],
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          x: { ticks: { color: tickColor } as any, grid: { color: gridColor } as any },
+          y: { ticks: { color: tickColor, precision: 0 } as any, grid: { color: gridColor } as any, beginAtZero: true },
+        },
+      },
+    };
+
+    this.destroyCompareCharts();
+    this.compareCharts.push(
+      new Chart(this.chartCmpScoreHist!.nativeElement, scoreHistConfig),
+      new Chart(this.chartCmpStatus!.nativeElement, statusConfig),
+      new Chart(this.chartCmpRadar!.nativeElement, radarConfig),
+      new Chart(this.chartCmpMissing!.nativeElement, missingConfig),
+      new Chart(this.chartCmpScoreBox!.nativeElement, scoreBoxConfig)
     );
   }
 }

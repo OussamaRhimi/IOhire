@@ -6,6 +6,18 @@ export default {
       handler: 'meta.get',
       config: { auth: false },
     },
+    {
+      method: 'GET',
+      path: '/meta/default-template',
+      handler: 'meta.getDefaultTemplate',
+      config: { auth: false },
+    },
+    {
+      method: 'PUT',
+      path: '/meta/default-template',
+      handler: 'meta.setDefaultTemplate',
+      config: { auth: false },
+    },
   ],
 };
 

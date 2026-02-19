@@ -935,6 +935,111 @@ textarea.input {
   padding-top: 12px;
 }
 
+.candidate-filter-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+.candidate-filter-field {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--accent-soft-bg) 12%);
+}
+
+.candidate-filter-input {
+  min-height: 44px;
+  border-radius: 12px;
+}
+
+.candidate-score-filter {
+  gap: 10px;
+}
+
+.candidate-score-filter__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.candidate-score-filter__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.candidate-score-filter__toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.candidate-score-filter__controls {
+  display: grid;
+  gap: 10px;
+}
+
+.candidate-score-filter__controls--disabled {
+  opacity: 0.55;
+}
+
+.candidate-score-filter__radios {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.candidate-score-filter__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.candidate-score-filter__radio input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.candidate-score-filter__radio--active {
+  border-color: var(--accent-soft-border);
+  background: var(--accent-soft-bg);
+  color: var(--accent);
+}
+
+.candidate-score-filter__range-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.candidate-score-filter__range {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.candidate-score-filter__value {
+  min-width: 44px;
+  text-align: right;
+  font-weight: 700;
+}
+
 .candidate-filter-columns {
   display: flex;
   gap: 10px;
@@ -950,6 +1055,17 @@ textarea.input {
   border-radius: 999px;
   background: var(--panel-2);
   cursor: pointer;
+}
+
+.candidate-filter-chip input {
+  accent-color: var(--accent);
+}
+
+@media (min-width: 980px) {
+  .candidate-filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
 }
 
 .candidate-bulk-toolbar {
@@ -1414,4 +1530,191 @@ textarea.input {
   .candidate-contact-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Score Explanation Card                                              */
+/* ------------------------------------------------------------------ */
+.score-explanation {
+  border-color: color-mix(in srgb, var(--border) 70%, var(--accent-soft-border) 30%);
+  background: linear-gradient(180deg, var(--panel), color-mix(in srgb, var(--panel) 96%, var(--accent) 4%));
+}
+
+.score-explanation__formula {
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  font-family: monospace;
+  font-size: 0.78rem;
+}
+
+.score-quality-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.score-quality-badge--excellent {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.score-quality-badge--good {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.score-quality-badge--fair {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.score-quality-badge--poor {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+/* Score progress bars */
+.score-bars {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.score-bar-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 44px;
+  gap: 10px;
+  align-items: center;
+}
+
+.score-bar-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.score-bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 600ms ease;
+}
+
+.score-bar-fill--final {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2, var(--accent)));
+}
+
+.score-bar-fill--fit {
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+}
+
+.score-bar-fill--completeness {
+  background: linear-gradient(90deg, #16a34a, #22d3ee);
+}
+
+.score-bar-value {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: right;
+  color: var(--text);
+}
+
+/* Detail sections */
+.score-detail-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.score-detail-heading {
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.score-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.score-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.score-tag--ok {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.score-tag--warn {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+/* Skill chips for explanation */
+.score-chip-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.score-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.score-chip--matched {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.score-chip--missing {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.score-notes {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--muted);
 }
