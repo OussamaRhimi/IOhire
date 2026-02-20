@@ -165,6 +165,8 @@ export class ApplyPage {
         resume,
         fullName: value.fullName.trim(),
         email: value.email.trim(),
+        linkedin: value.linkedin?.trim() || undefined,
+        portfolio: value.portfolio?.trim() || undefined,
       });
       this.submitResult.set(res);
     } catch (e) {

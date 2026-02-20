@@ -10,6 +10,7 @@ import {
   JobRequirements,
   CandidateStatus,
   CvTemplateMeta,
+  EvaluationConfig,
   PublicApplicationStatus,
   PublicRecommendationResponse,
   PublicApplicationSubmitResponse,
@@ -159,12 +160,16 @@ export class StrapiApi {
     resume: File;
     fullName?: string;
     email?: string;
+    linkedin?: string;
+    portfolio?: string;
   }): Promise<PublicApplicationSubmitResponse> {
     const formData = new FormData();
     formData.append('jobPostingId', String(input.jobPostingId));
     formData.append('consent', String(!!input.consent));
     if (input.fullName) formData.append('fullName', input.fullName);
     if (input.email) formData.append('email', input.email);
+    if (input.linkedin) formData.append('linkedin', input.linkedin);
+    if (input.portfolio) formData.append('portfolio', input.portfolio);
     formData.append('resume', input.resume);
 
     return await firstValueFrom(
@@ -282,6 +287,21 @@ export class StrapiApi {
       .map((k) => `/api/job-postings/${encodeURIComponent(k)}`);
 
     await this.deleteFirstOk(paths);
+  }
+
+  async getHrEvalConfig(jobId: number): Promise<{ evaluationConfig: EvaluationConfig; defaults: EvaluationConfig }> {
+    const res: any = await firstValueFrom(this.http.get(`/api/hr/job-postings/${jobId}/eval-config`));
+    return {
+      evaluationConfig: res?.evaluationConfig,
+      defaults: res?.defaults,
+    };
+  }
+
+  async setHrEvalConfig(jobId: number, evaluationConfig: EvaluationConfig): Promise<EvaluationConfig> {
+    const res: any = await firstValueFrom(
+      this.http.put(`/api/hr/job-postings/${jobId}/eval-config`, { evaluationConfig })
+    );
+    return res?.evaluationConfig;
   }
 
   async listHrCandidates(options?: { onlyOpenJobPostings?: boolean }): Promise<HrCandidate[]> {

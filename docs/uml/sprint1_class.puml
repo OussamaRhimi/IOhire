@@ -1,88 +1,51 @@
 @startuml
-title Sprint 1 - Class Diagram (Academic Domain Model)
+title Sprint 1 - Class Diagram
 
 skinparam classAttributeIconSize 0
 skinparam shadowing false
 skinparam linetype ortho
 left to right direction
 
-abstract class User {
-  +userId: int
-  +fullName: string
-  +email: string
-  --
-  +authenticate(password: string): boolean
-  +logout(): void
-}
-
-class HRUser {
+class HRUser <<Strapi Admin>> {
   +email: string
   +password: string
   +role: string
-  --
-  +addSkill(name: string): Skill
-  +updateSkill(skillId: int, name: string): void
-  +deleteSkill(skillId: int): void
-  +searchSkills(query: string): Skill[*]
-  +addDepartment(name: string): Department
-  +updateDepartment(departmentId: int, name: string): void
-  +deleteDepartment(departmentId: int): void
-  +searchDepartments(query: string): Department[*]
-  +createJobPosting(data): JobPosting
-  +updateJobPosting(jobId: int, patch): JobPosting
-  +changeJobStatus(jobId: int, status: JobPostingStatus): void
-  +deleteJobPosting(jobId: int): void
 }
 
-User <|-- HRUser
-
 class JobPosting {
-  +jobId: int
+  +id: int
   +title: string
   +description: text
+  +requirements: Requirements
   +status: JobPostingStatus
   +createdAt: datetime
   +updatedAt: datetime
-  --
-  +openPosting(): void
-  +closePosting(): void
-  +updateDetails(title: string, description: text): void
 }
 
-class JobRequirement {
+class Requirements <<value object>> {
   +skillsRequired: string[*]
   +skillsNiceToHave: string[*]
   +departments: string[*]
   +minYearsExperience: int
   +notes: string
-  --
-  +addRequiredSkill(skill: string): void
-  +removeRequiredSkill(skill: string): void
-  +addDepartment(department: string): void
-  +removeDepartment(department: string): void
-  +setMinYearsExperience(years: int): void
 }
 
 class Skill {
-  +skillId: int
-  +name: string
-  --
-  +rename(name: string): void
+  +id: int
+  +name: string <<unique>>
 }
 
 class Department {
-  +departmentId: int
-  +name: string
-  --
-  +rename(name: string): void
+  +id: int
+  +name: string <<unique>>
 }
 
-HRUser "1" -- "0..*" JobPosting : manages >
-JobPosting "1" *-- "1" JobRequirement : defines >
-JobRequirement "0..*" -- "0..*" Skill : uses >
-JobRequirement "0..*" -- "0..*" Department : uses >
-HRUser "1" -- "0..*" Skill : curates >
-HRUser "1" -- "0..*" Department : curates >
+HRUser "1" --> "0..*" JobPosting : manages >
+HRUser "1" --> "0..*" Skill : curates >
+HRUser "1" --> "0..*" Department : curates >
+JobPosting "1" *-- "1" Requirements : contains >
+Requirements "0..*" ..> "0..*" Skill : references >
+Requirements "0..*" ..> "0..*" Department : references >
 
 enum JobPostingStatus {
   draft

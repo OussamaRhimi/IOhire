@@ -16,6 +16,47 @@ export type JobRequirements = {
   departments?: string[];
   minYearsExperience?: number;
   notes?: string;
+  evaluationConfig?: EvaluationConfig;
+};
+
+export type CompletenessPointsConfig = {
+  fullName: number;
+  email: number;
+  phone: number;
+  location: number;
+  links: number;
+  linkedin: number;
+  portfolio: number;
+  summary: number;
+  competencies: number;
+  experience: number;
+  experienceDates: number;
+  education: number;
+};
+
+export type CustomCriterion = {
+  name: string;
+  type: 'bonus' | 'penalty';
+  points: number;
+  keywords: string[];
+  requireAll: boolean;
+};
+
+export type QualityThresholds = {
+  excellent: number;
+  good: number;
+  fair: number;
+};
+
+export type EvaluationConfig = {
+  fitWeight: number;
+  completenessWeight: number;
+  requiredSkillsWeight: number;
+  niceToHaveSkillsWeight: number;
+  experienceWeight: number;
+  completenessPoints: CompletenessPointsConfig;
+  customCriteria: CustomCriterion[];
+  qualityThresholds: QualityThresholds;
 };
 
 export type HrLookupItem = {
@@ -94,6 +135,8 @@ export type HrCandidateDetail = {
   documentId: string | null;
   fullName: string | null;
   email: string | null;
+  linkedin: string | null;
+  portfolio: string | null;
   cvTemplateKey: string | null;
   status: CandidateStatus | null;
   score: number | null;

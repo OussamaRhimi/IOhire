@@ -1,14 +1,14 @@
 \begin{longtable}{|p{1.4cm}|p{3.2cm}|p{6.3cm}|p{1.7cm}|p{1.2cm}|}
-\caption{Sprint 2 Product Backlog Aligned with UML (28 days)} \\ \hline
+\caption{Sprint 2 Product Backlog (28 days)} \\ \hline
 \textbf{Story} & \textbf{UML Reference} & \textbf{Product Backlog Item} & \textbf{Duration (days)} & \textbf{Priority} \\ \hline
-S2-US1 & UC21; JobPosting.isOpen() & Public listing of open JobPostings only. & 3 & Must \\ \hline
-S2-US2 & UC22, UC23; Candidate.submitApplication(); Resume.validateType()/validateSize() & Candidate application submission with resume upload and file validation. & 5 & Must \\ \hline
-S2-US3 & UC24; CandidateApplication.consent/consentAt/retentionUntil & Consent capture and retention metadata at submission time. & 2 & Must \\ \hline
-S2-US4 & UC25; Candidate.trackApplication(); CandidateApplication.publicToken/status & Token-based application tracking endpoint and UI flow. & 3 & Must \\ \hline
-S2-US5 & UC26; Candidate.deleteApplication() & Public self-service deletion of application by token. & 2 & Must \\ \hline
-S2-US6 & UC27; HRUser.reviewApplication() & HR listing and review queue for CandidateApplications. & 4 & Must \\ \hline
-S2-US7 & UC28, UC31; CandidateApplication + Resume & Candidate detail view and resume download for HR users. & 3 & Must \\ \hline
-S2-US8 & UC29; HRUser.updateApplicationStatus(); CandidateApplication.setStatus() & Update CandidateApplication workflow status. & 3 & Must \\ \hline
-S2-US9 & UC30; HRUser.setApplicationNotes(); CandidateApplication.setHRNotes() & HR notes management for each CandidateApplication. & 3 & Must \\ \hline
+S2-US1 & UC1; JobPosting.status & Public listing of open job postings only. & 3 & Must \\ \hline
+S2-US2 & UC2, UC3; Candidate & Candidate application submission with resume upload (PDF/DOCX/TXT) and file validation. & 5 & Must \\ \hline
+S2-US3 & UC4; Candidate.consent & Consent capture, consentAt timestamp, and retentionUntil auto-calculation at submission. & 2 & Must \\ \hline
+S2-US4 & UC5; Candidate.publicToken & Token-based application tracking endpoint and UI flow. & 3 & Must \\ \hline
+S2-US5 & UC6; Candidate & Public self-service deletion of application by token (GDPR). & 2 & Must \\ \hline
+S2-US6 & UC7; HRUser & HR listing and review queue for candidates. & 4 & Must \\ \hline
+S2-US7 & UC8, UC11; Candidate & Candidate detail view and original resume download for HR users. & 3 & Must \\ \hline
+S2-US8 & UC9; Candidate.status & Update candidate workflow status (new, reviewing, shortlisted, rejected, hired). & 3 & Must \\ \hline
+S2-US9 & UC10; Candidate.hrNotes & HR notes management for each candidate. & 3 & Must \\ \hline
 \textbf{Total} &  & \textbf{Sprint 2 duration} & \textbf{28} &  \\ \hline
 \end{longtable}

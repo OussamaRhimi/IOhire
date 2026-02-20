@@ -104,7 +104,7 @@
 
         <section class="card candidate-panel">
           <div class="candidate-panel__head">
-            <h2>Skills and Competencies</h2>
+            <h2>Technical Skills</h2>
             <span class="candidate-check">OK</span>
           </div>
           @if (extractedSkills().length === 0) {
@@ -118,6 +118,43 @@
           }
         </section>
 
+        @if (extractedCompetencies().length > 0) {
+          <section class="card candidate-panel">
+            <div class="candidate-panel__head">
+              <h2>Competencies</h2>
+              <span class="candidate-check">OK</span>
+            </div>
+            <div class="candidate-stack">
+              @for (c of extractedCompetencies(); track c) {
+                <div class="candidate-item">
+                  <div class="candidate-item__icon candidate-item__icon--green">C</div>
+                  <div class="strong" style="font-weight: 400">{{ c }}</div>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
+        @if (candidateLinks().length > 0) {
+          <section class="card candidate-panel">
+            <div class="candidate-panel__head">
+              <h2>Links &amp; Profiles</h2>
+              <span class="candidate-check">OK</span>
+            </div>
+            <div class="candidate-stack">
+              @for (lnk of candidateLinks(); track lnk.url) {
+                <div class="candidate-item">
+                  <div class="candidate-item__icon candidate-item__icon--blue">{{ lnk.icon }}</div>
+                  <div>
+                    <div class="strong">{{ lnk.label }}</div>
+                    <a class="muted small" [href]="lnk.url" target="_blank" rel="noopener">{{ lnk.url }}</a>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        }
+
         <!-- Score Explanation Card -->
         @if (scoreExplanation(); as exp) {
           <section class="card candidate-panel score-explanation">
@@ -127,7 +164,7 @@
             </div>
 
             <p class="score-explanation__formula muted small">
-              Final Score = Fit Score × 75% + Completeness Score × 25%
+              Final Score = Fit Score × {{ exp.fitWeight }}% + Completeness Score × {{ exp.completenessWeight }}%
             </p>
 
             <!-- Score bars -->
@@ -216,6 +253,28 @@
                     }
                   </div>
                 }
+              </div>
+            }
+
+            <!-- Custom Criteria -->
+            @if (exp.customResults.length > 0) {
+              <div class="score-detail-section">
+                <div class="score-detail-heading">Custom Criteria</div>
+                <div class="score-chip-wrap">
+                  @for (cr of exp.customResults; track cr.name) {
+                    <span class="score-chip" [class.score-chip--bonus-hit]="cr.type === 'bonus' && cr.matched"
+                          [class.score-chip--bonus-miss]="cr.type === 'bonus' && !cr.matched"
+                          [class.score-chip--penalty-hit]="cr.type === 'penalty' && cr.matched"
+                          [class.score-chip--penalty-miss]="cr.type === 'penalty' && !cr.matched">
+                      {{ cr.name }}
+                      @if (cr.matched) {
+                        <span class="score-chip__pts">{{ cr.type === 'bonus' ? '+' : '' }}{{ cr.points }}pts</span>
+                      } @else {
+                        <span class="score-chip__pts">—</span>
+                      }
+                    </span>
+                  }
+                </div>
               </div>
             }
 

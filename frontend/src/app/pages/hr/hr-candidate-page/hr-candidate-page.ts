@@ -208,6 +208,32 @@ export class HrCandidatePage {
     return uniqStrings(skills);
   });
 
+  readonly extractedCompetencies = computed(() => {
+    const extracted: any = this.candidate()?.extractedData ?? null;
+    const competencies = toStringArray(extracted?.competencies ?? []);
+    return uniqStrings(competencies);
+  });
+
+  readonly candidateLinks = computed(() => {
+    const c = this.candidate();
+    const contact = this.contactInfo();
+    const links: { label: string; url: string; icon: string }[] = [];
+
+    const linkedin = c?.linkedin || contact.links.find((l) => l.toLowerCase().includes('linkedin'));
+    if (linkedin) links.push({ label: 'LinkedIn', url: linkedin, icon: 'L' });
+
+    const portfolio = c?.portfolio || contact.links.find((l) => /github|gitlab|bitbucket|portfolio/i.test(l));
+    if (portfolio) links.push({ label: 'Portfolio / GitHub', url: portfolio, icon: 'G' });
+
+    for (const link of contact.links) {
+      const lower = link.toLowerCase();
+      if (lower.includes('linkedin') || /github|gitlab|bitbucket|portfolio/i.test(lower)) continue;
+      links.push({ label: link, url: link, icon: '🔗' });
+    }
+
+    return links;
+  });
+
   readonly requiredSkills = computed(() => {
     const skills = this.candidate()?.jobPosting?.requirements?.skillsRequired ?? [];
     return uniqStrings(Array.isArray(skills) ? skills.filter((v) => typeof v === 'string') : []);
@@ -321,6 +347,8 @@ export class HrCandidatePage {
       { label: 'Work Experience', present: this.experienceTimeline().roles.length > 0 },
       { label: 'Education', present: this.educationItems().length > 0 },
       { label: 'Skills', present: this.extractedSkills().length > 0 },
+      { label: 'Competencies', present: this.extractedCompetencies().length > 0 },
+      { label: 'Links / Profiles', present: this.candidateLinks().length > 0 },
       { label: 'Contact Details', present: contact.phone !== '-' || contact.location !== '-' || contact.links.length > 0 },
     ];
   });
@@ -345,12 +373,22 @@ export class HrCandidatePage {
     const minYears = this.candidate()?.jobPosting?.requirements?.minYearsExperience ?? null;
     const experienceMet = minYears != null && experienceYears != null ? experienceYears >= minYears : null;
 
-    // Determine a qualitative label
+    // Read evaluation config (populated by deterministicEvaluate)
+    const cfg = evaluation.evaluationConfig ?? null;
+    const fitWeight = cfg?.fitWeight ?? 75;
+    const completenessWeight = cfg?.completenessWeight ?? 25;
+
+    // Quality thresholds from config
+    const qt = cfg?.qualityThresholds ?? { excellent: 80, good: 60, fair: 40 };
     let qualityLabel = 'Poor';
     let qualityClass = 'poor';
-    if (score >= 80) { qualityLabel = 'Excellent'; qualityClass = 'excellent'; }
-    else if (score >= 60) { qualityLabel = 'Good'; qualityClass = 'good'; }
-    else if (score >= 40) { qualityLabel = 'Fair'; qualityClass = 'fair'; }
+    if (score >= (qt.excellent ?? 80)) { qualityLabel = 'Excellent'; qualityClass = 'excellent'; }
+    else if (score >= (qt.good ?? 60)) { qualityLabel = 'Good'; qualityClass = 'good'; }
+    else if (score >= (qt.fair ?? 40)) { qualityLabel = 'Fair'; qualityClass = 'fair'; }
+
+    // Custom criteria results
+    const customResults: { name: string; type: 'bonus' | 'penalty'; points: number; matched: boolean }[] =
+      Array.isArray(evaluation.customResults) ? evaluation.customResults : [];
 
     return {
       score,
@@ -366,6 +404,9 @@ export class HrCandidatePage {
       notes,
       qualityLabel,
       qualityClass,
+      fitWeight,
+      completenessWeight,
+      customResults,
     };
   });
 

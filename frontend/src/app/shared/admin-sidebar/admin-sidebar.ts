@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule, type LucideIconData } from 'lucide-angular';
 import {
   Activity,
+  BrainCircuit,
   BriefcaseBusiness,
   FileText,
   LayoutDashboard,
@@ -47,6 +48,7 @@ export class AdminSidebar {
   readonly hrNav: AdminNavItem[] = [
     { label: 'Job Postings', icon: BriefcaseBusiness, link: '/admin/hr/jobs' },
     { label: 'Candidates', icon: Users, link: '/admin/hr/candidates' },
+    { label: 'AI Evaluation', icon: BrainCircuit, link: '/admin/hr/ai' },
     { label: 'CV Templates', icon: FileText, link: '/admin/hr/templates' },
     { label: 'Skills', icon: Target, link: '/admin/hr/skills' },
     { label: 'Departments', icon: Activity, link: '/admin/hr/departments' },

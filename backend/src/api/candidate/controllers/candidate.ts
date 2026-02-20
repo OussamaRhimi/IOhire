@@ -260,6 +260,27 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
     ctx.body = { key, html: renderCvHtmlFromTemplate(key, { contact, content: sample }) };
   },
 
+  async hrGetCvTemplateSampleMarkdown(ctx) {
+    const key = typeof ctx.params?.key === 'string' ? ctx.params.key.trim() : '';
+    if (!isCvTemplateKey(key)) return ctx.badRequest('Unknown template key.');
+
+    const sample: ResumeContent = {
+      summary: 'Product-minded software engineer with 6+ years of experience.',
+      skills: ['TypeScript', 'Node.js', 'Strapi', 'PostgreSQL'],
+      languages: ['English (Fluent)'],
+      qualities: ['Structured', 'Reliable'],
+      interests: ['Open-source'],
+      experience: [
+        { title: 'Software Engineer', company: 'Example Corp', startDate: '2022', endDate: 'Present', highlights: ['Built internal HR tooling.'] },
+      ],
+      education: [{ degree: 'B.Sc. Computer Science', school: 'Sample University', startDate: '2017', endDate: '2020' }],
+      projects: [],
+      certifications: [],
+    };
+
+    ctx.body = { key, markdown: renderCvMarkdownFromTemplate(key, sample) };
+  },
+
   async hrFindOne(ctx) {
     const id = coerceNumber(ctx.params?.id);
     if (!id) return ctx.badRequest('Candidate id is required.');
@@ -268,6 +289,8 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
       fields: [
         'fullName',
         'email',
+        'linkedin',
+        'portfolio',
         'cvTemplateKey',
         'status',
         'score',
@@ -295,6 +318,8 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
       documentId: typeof candidate.documentId === 'string' ? candidate.documentId : null,
       fullName: typeof candidate.fullName === 'string' ? candidate.fullName : null,
       email: typeof candidate.email === 'string' ? candidate.email : null,
+      linkedin: typeof candidate.linkedin === 'string' ? candidate.linkedin : null,
+      portfolio: typeof candidate.portfolio === 'string' ? candidate.portfolio : null,
       cvTemplateKey: typeof candidate.cvTemplateKey === 'string' ? candidate.cvTemplateKey : null,
       status: typeof candidate.status === 'string' ? candidate.status : null,
       score: Number.isFinite(score) ? score : null,
@@ -356,6 +381,8 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
 
     const fullName = typeof body.fullName === 'string' ? body.fullName.trim() : null;
     const email = typeof body.email === 'string' ? body.email.trim() : null;
+    const linkedin = typeof body.linkedin === 'string' ? body.linkedin.trim() : null;
+    const portfolio = typeof body.portfolio === 'string' ? body.portfolio.trim() : null;
     const consent = coerceBoolean(body.consent);
     const jobPostingId = coerceNumber(body.jobPostingId);
 
@@ -409,6 +436,8 @@ export default factories.createCoreController('api::candidate.candidate', ({ str
       data: {
         fullName,
         email,
+        ...(linkedin ? { linkedin } : {}),
+        ...(portfolio ? { portfolio } : {}),
         resume: uploadFile.id,
         jobPosting: jobPostingId,
         consent: true,

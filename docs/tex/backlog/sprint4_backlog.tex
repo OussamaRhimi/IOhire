@@ -1,13 +1,13 @@
 \begin{longtable}{|p{1.4cm}|p{3.2cm}|p{6.3cm}|p{1.7cm}|p{1.2cm}|}
-\caption{Sprint 4 Product Backlog Aligned with UML (21 days)} \\ \hline
+\caption{Sprint 4 Product Backlog (21 days)} \\ \hline
 \textbf{Story} & \textbf{UML Reference} & \textbf{Product Backlog Item} & \textbf{Duration (days)} & \textbf{Priority} \\ \hline
-S4-US1 & UC41; HRUser.filterCandidates(); CandidateFilterCriteria.matches() & Multi-criteria filtering of CandidateApplications. & 4 & Must \\ \hline
-S4-US2 & UC42; CandidateFilterCriteria.scoreOperator/scoreThreshold & Score-threshold filtering support (operators and threshold). & 2 & Must \\ \hline
-S4-US3 & UC43; CandidateFilterCriteria.openJobId & Filter CandidateApplications by open JobPosting. & 2 & Must \\ \hline
-S4-US4 & UC44; HRUser.selectFilteredCandidates() & Selection workflow on filtered CandidateApplications. & 2 & Must \\ \hline
-S4-US5 & UC45; HRUser.applyBulkStatus(); BulkStatusCommand.validate() & Bulk status update on selected candidates. & 3 & Must \\ \hline
-S4-US6 & UC46, UC47; HRUser.viewAnalytics(); AnalyticsSnapshot.buildFromData() & Analytics dashboard with KPIs and charts (status, score, submissions). & 4 & Must \\ \hline
-S4-US7 & UC48; HRUser.monitorAIPipeline(); AIProcessor.markStuckAsError() & AI processing health monitoring and stuck-processing supervision. & 2 & Must \\ \hline
-S4-US8 & UC49; AIProcessor.computeMatchScore() & Use AI-derived match score in HR decision support and filtering. & 2 & Must \\ \hline
+S4-US1 & UC1; Candidate & Multi-criteria filtering of candidates (status, score, job posting, search). & 4 & Must \\ \hline
+S4-US2 & UC2; Candidate.score & Score-threshold filtering support (operators and threshold). & 2 & Must \\ \hline
+S4-US3 & UC3; JobPosting & Filter candidates by job posting. & 2 & Must \\ \hline
+S4-US4 & UC4; BulkStatusCommand & Bulk status update on selected candidates. & 3 & Must \\ \hline
+S4-US5 & UC5, UC6; AnalyticsSnapshot & Analytics dashboard with KPIs and charts (status distribution, score histogram, submissions over time). & 4 & Must \\ \hline
+S4-US6 & UC7; CVTemplate & Set default CV template globally via Meta API. & 2 & Must \\ \hline
+S4-US7 & --- & Admin shell with sidebar navigation and unified HR portal layout. & 2 & Must \\ \hline
+S4-US8 & --- & Job posting cascade deletion (candidates and resume files). & 2 & Must \\ \hline
 \textbf{Total} &  & \textbf{Sprint 4 duration} & \textbf{21} &  \\ \hline
 \end{longtable}

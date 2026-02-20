@@ -1,65 +1,58 @@
 @startuml
-title Sprint 3 - Use Case Diagram (Academic)
+title Sprint 3 - Use Case Diagram
 left to right direction
 skinparam packageStyle rectangle
 skinparam shadowing false
 
 actor Candidate as A_Candidate
 actor "HR User" as A_HR
-actor "AI Service (Ollama)" as A_AI
+actor "AI Service\n(Ollama)" as A_AI
 
 rectangle "IOhire - Sprint 3" {
-  package "AI CandidateApplication Processing" {
-    usecase "UC31 - Auto-process CandidateApplication" as UC31
-    usecase "UC32 - Reprocess CandidateApplication" as UC32
-    usecase "UC33 - Extract Resume Text" as UC33
-    usecase "UC34 - Parse Resume into ExtractedData" as UC34
-    usecase "UC35 - Evaluate CandidateApplication Match" as UC35
-    usecase "UC36 - Generate StandardizedCV" as UC36
+  package "AI Processing Pipeline" {
+    usecase "UC1 - Auto-process Candidate" as UC1
+    usecase "UC2 - Extract Resume Text" as UC2
+    usecase "UC3 - Parse CV (AI)" as UC3
+    usecase "UC4 - Evaluate Fit Score" as UC4
+    usecase "UC5 - Generate Standardized CV" as UC5
+    usecase "UC6 - Reprocess Candidate" as UC6
   }
 
-  package "Template and PDF" {
-    usecase "UC37 - Select CVTemplate" as UC37
-    usecase "UC38 - Download StandardizedCV PDF (HR)" as UC38
-    usecase "UC39 - Download StandardizedCV PDF (publicToken)" as UC39
+  package "CV Templates and PDF" {
+    usecase "UC7 - Select CV Template" as UC7
+    usecase "UC8 - Download Standardized CV (HR)" as UC8
+    usecase "UC9 - Download Standardized CV (Public)" as UC9
   }
 
-  package "Public Recommendation" {
-    usecase "UC40 - Request JobRecommendations from Resume" as UC40
-    usecase "UC41 - Extract SkillProfile for Recommendation" as UC41
-    usecase "UC42 - Rank Open JobPostings by Compatibility" as UC42
-    usecase "UC43 - Return Top JobRecommendations" as UC43
+  package "AI Evaluation Config" {
+    usecase "UC10 - Configure Evaluation per Job" as UC10
+  }
+
+  package "Public Features" {
+    usecase "UC11 - Request Job Recommendations" as UC11
+    usecase "UC12 - Chat with AI Assistant" as UC12
   }
 }
 
-A_HR --> UC32
-A_HR --> UC37
-A_HR --> UC38
+A_HR --> UC6
+A_HR --> UC7
+A_HR --> UC8
+A_HR --> UC10
 
-A_Candidate --> UC39
-A_Candidate --> UC40
+A_Candidate --> UC9
+A_Candidate --> UC11
+A_Candidate --> UC12
 
-UC31 ..> UC33 : <<include>>
-UC31 ..> UC34 : <<include>>
-UC31 ..> UC35 : <<include>>
-UC31 ..> UC36 : <<include>>
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC1 ..> UC5 : <<include>>
 
-UC32 ..> UC31 : <<include>>
-UC38 ..> UC36 : <<include>>
-UC39 ..> UC36 : <<include>>
+UC6 ..> UC1 : <<triggers>>
 
-UC40 ..> UC41 : <<include>>
-UC40 ..> UC42 : <<include>>
-UC40 ..> UC43 : <<include>>
-UC40 ..> UC33 : <<include>>
-
-A_AI -left-> UC34
-A_AI -left-> UC36
-A_AI -left-> UC41
-
-note right of UC40
-  Stateless recommendation path:
-  resume upload -> skill extraction -> ranking.
-end note
+A_AI --> UC3
+A_AI --> UC5
+A_AI --> UC11
+A_AI --> UC12
 
 @enduml

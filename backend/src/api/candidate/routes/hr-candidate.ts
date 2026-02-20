@@ -15,7 +15,7 @@ export default {
     {
       method: 'GET',
       path: '/hr/cv-templates/:key/sample-markdown',
-      handler: 'candidate.hrGetCvTemplateSampleHtml',
+      handler: 'candidate.hrGetCvTemplateSampleMarkdown',
       config: { auth: { scope: ['api::candidate.candidate.find'] } },
     },
     {

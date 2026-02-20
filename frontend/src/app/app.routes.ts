@@ -62,6 +62,12 @@ export const routes: Routes = [
           import('./pages/hr/hr-templates-page/hr-templates-page').then((m) => m.HrTemplatesPage),
       },
       {
+        path: 'hr/ai',
+        title: 'AI Evaluation',
+        loadComponent: () =>
+          import('./pages/hr/hr-ai-config-page/hr-ai-config-page').then((m) => m.HrAiConfigPage),
+      },
+      {
         path: 'hr/skills',
         title: 'Skills',
         loadComponent: () => import('./pages/hr/hr-skills-page/hr-skills-page').then((m) => m.HrSkillsPage),

@@ -1,50 +1,36 @@
 @startuml
-title Sprint 4 - Use Case Diagram (Academic)
+title Sprint 4 - Use Case Diagram
 left to right direction
 skinparam packageStyle rectangle
 skinparam shadowing false
 
 actor "HR User" as A_HR
-actor "AI Service (Ollama)" as A_AI
 
 rectangle "IOhire - Sprint 4" {
-  package "CandidateApplication Decision Support" {
-    usecase "UC41 - Filter CandidateApplications (Multi-criteria)" as UC41
-    usecase "UC42 - Filter by Score Threshold" as UC42
-    usecase "UC43 - Filter by Open JobPosting" as UC43
-    usecase "UC44 - Select Filtered CandidateApplications" as UC44
-    usecase "UC45 - Apply Bulk CandidateApplication Status" as UC45
+  package "Decision Support" {
+    usecase "UC1 - Filter Candidates (Multi-criteria)" as UC1
+    usecase "UC2 - Filter by Score Threshold" as UC2
+    usecase "UC3 - Filter by Job Posting" as UC3
+    usecase "UC4 - Bulk Update Candidate Status" as UC4
   }
 
-  package "Analytics and AI Supervision" {
-    usecase "UC46 - View Analytics Dashboard" as UC46
-    usecase "UC47 - Review KPIs and Charts" as UC47
-    usecase "UC48 - Monitor AI Processing Health" as UC48
-    usecase "UC49 - Use AI-Derived Match Score in Decisions" as UC49
+  package "Analytics" {
+    usecase "UC5 - View Analytics Dashboard" as UC5
+    usecase "UC6 - Review KPIs and Charts" as UC6
+  }
+
+  package "Configuration" {
+    usecase "UC7 - Set Default CV Template" as UC7
   }
 }
 
-A_HR --> UC41
-A_HR --> UC45
-A_HR --> UC46
-A_HR --> UC48
+A_HR --> UC1
+A_HR --> UC4
+A_HR --> UC5
+A_HR --> UC7
 
-UC41 ..> UC42 : <<include>>
-UC41 ..> UC43 : <<include>>
-UC41 ..> UC44 : <<include>>
-UC41 ..> UC49 : <<include>>
-UC45 ..> UC44 : <<include>>
-
-UC46 ..> UC47 : <<include>>
-UC48 ..> UC49 : <<include>>
-
-A_AI -left-> UC49
-A_AI -left-> UC48
-
-note right of UC45
-  Example policy:
-  for one JobPosting, reject low-score
-  CandidateApplications and hire top scorers.
-end note
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC5 ..> UC6 : <<include>>
 
 @enduml

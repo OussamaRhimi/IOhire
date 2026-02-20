@@ -1,14 +1,16 @@
 \begin{longtable}{|p{1.4cm}|p{3.2cm}|p{6.3cm}|p{1.7cm}|p{1.2cm}|}
-\caption{Sprint 3 Product Backlog Aligned with UML (28 days)} \\ \hline
+\caption{Sprint 3 Product Backlog (28 days)} \\ \hline
 \textbf{Story} & \textbf{UML Reference} & \textbf{Product Backlog Item} & \textbf{Duration (days)} & \textbf{Priority} \\ \hline
-S3-US1 & UC31; AIProcessor.processApplication() & Automatic CandidateApplication processing pipeline orchestration with status transitions. & 4 & Must \\ \hline
-S3-US2 & UC33; AIProcessor.extractResumeText(); Resume.loadText() & Resume text extraction from supported document formats. & 3 & Must \\ \hline
-S3-US3 & UC34; AIProcessor.parseCV(); ExtractedData & Parse CV text into normalized ExtractedData. & 4 & Must \\ \hline
-S3-US4 & UC35; AIProcessor.evaluateFit(); EvaluationReport.calculateTotal() & Match evaluation (fit score, completeness score, total score, missing skills/fields). & 4 & Must \\ \hline
-S3-US5 & UC36; AIProcessor.generateStandardCV(); StandardizedCV.renderMarkdown() & Generate standardized CV content in markdown format. & 4 & Must \\ \hline
-S3-US6 & UC37; CVTemplate.render(); CandidateApplication.cvTemplateKey & CV template catalog and candidate-level template selection. & 3 & Must \\ \hline
-S3-US7 & UC38, UC39; StandardizedCV PDF flow & Download standardized CV as PDF for HR and public token flows. & 2 & Must \\ \hline
-S3-US8 & UC32; AIProcessor.reprocessCandidate() & Reprocess CandidateApplication on HR demand. & 2 & Should \\ \hline
-S3-US9 & UC40, UC41, UC42, UC43; RecommendationEngine.* & Resume-based job recommendation (skill extraction, ranking, top matches). & 2 & Should \\ \hline
-\textbf{Total} &  & \textbf{Sprint 3 duration} & \textbf{28} &  \\ \hline
+S3-US1 & UC1; AIProcessor & Automatic candidate processing pipeline: extract text, parse CV, evaluate fit, generate standardized CV. & 4 & Must \\ \hline
+S3-US2 & UC2; AIProcessor & Resume text extraction from PDF, DOCX, and TXT formats. & 3 & Must \\ \hline
+S3-US3 & UC3; AIProcessor & Parse CV via Ollama into structured extracted data (contact, skills, experience, education, projects). & 4 & Must \\ \hline
+S3-US4 & UC4; EvaluationConfig & Deterministic fit evaluation: required skills coverage, nice-to-have, experience, completeness scoring, custom criteria. & 4 & Must \\ \hline
+S3-US5 & UC5; AIProcessor, CVTemplate & Generate standardized CV markdown via Ollama with template rendering. & 4 & Must \\ \hline
+S3-US6 & UC7; CVTemplate & CV template catalog (11 templates) and per-candidate template selection. & 3 & Must \\ \hline
+S3-US7 & UC8, UC9; Candidate & Download standardized CV as PDF for HR and public token flows (Playwright-based HTML-to-PDF). & 2 & Must \\ \hline
+S3-US8 & UC6; AIProcessor & Reprocess candidate on HR demand (reset to new and re-trigger pipeline). & 2 & Should \\ \hline
+S3-US9 & UC10; EvaluationConfig & Per-job AI evaluation configuration (fit/completeness weights, sub-weights, quality thresholds, custom criteria). & 2 & Should \\ \hline
+S3-US10 & UC11; Candidate & Resume-based job recommendation: skill extraction, ranking open postings by compatibility. & 2 & Should \\ \hline
+S3-US11 & UC12; Ollama & Public AI chatbot scoped to portal features (application help, job info). & 2 & Could \\ \hline
+\textbf{Total} &  & \textbf{Sprint 3 duration} & \textbf{32} &  \\ \hline
 \end{longtable}

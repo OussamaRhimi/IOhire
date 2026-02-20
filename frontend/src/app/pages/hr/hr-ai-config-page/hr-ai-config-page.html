@@ -1,0 +1,395 @@
+<div class="ai-config-page">
+  <header class="page-header">
+    <div class="page-header-row">
+      <lucide-angular [img]="iconBrain" [size]="28" class="page-icon"></lucide-angular>
+      <div>
+        <h1>AI Evaluation Configuration</h1>
+        <p class="page-subtitle">Customize how candidates are scored for each job posting</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Job selector -->
+  <section class="job-selector card">
+    <label class="selector-label" for="jobSelect">
+      <lucide-angular [img]="iconSettings" [size]="18"></lucide-angular>
+      Select Job Posting
+    </label>
+    <select
+      id="jobSelect"
+      class="selector-input"
+      [ngModel]="selectedJobId()"
+      (ngModelChange)="onSelectJob($event)"
+    >
+      <option [ngValue]="null" disabled>— Choose a job posting —</option>
+      @for (job of jobs(); track job.id) {
+        <option [ngValue]="job.id">{{ job.title }} ({{ job.status }})</option>
+      }
+    </select>
+  </section>
+
+  @if (error()) {
+    <div class="alert alert--error">{{ error() }}</div>
+  }
+  @if (success()) {
+    <div class="alert alert--success">{{ success() }}</div>
+  }
+
+  @if (loading() && !selectedJob()) {
+    <div class="loading-state">Loading job postings…</div>
+  }
+
+  @if (selectedJob()) {
+    <!-- Action bar -->
+    <div class="action-bar">
+      <span class="action-label">
+        Configuring: <strong>{{ selectedJob()?.title }}</strong>
+      </span>
+      <div class="action-buttons">
+        <button class="btn btn--outline" (click)="resetToDefaults()" [disabled]="saving()">
+          <lucide-angular [img]="iconReset" [size]="16"></lucide-angular>
+          Reset Defaults
+        </button>
+        <button class="btn btn--primary" (click)="save()" [disabled]="saving() || !dirty()">
+          <lucide-angular [img]="iconSave" [size]="16"></lucide-angular>
+          {{ saving() ? 'Saving…' : 'Save Configuration' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!--  Section 1: Main Score Weights                                -->
+    <!-- ============================================================ -->
+    <section class="config-section card">
+      <button class="section-header" (click)="toggleSection('weights')">
+        <lucide-angular [img]="iconSliders" [size]="20"></lucide-angular>
+        <span class="section-title">Score Weights</span>
+        <span class="section-badge">Fit {{ previewScore().fitPct }}% · Completeness {{ previewScore().completenessPct }}%</span>
+        <lucide-angular [img]="iconChevron" [size]="18" [class.rotated]="isExpanded('weights')"></lucide-angular>
+      </button>
+
+      @if (isExpanded('weights')) {
+        <div class="section-body">
+          <p class="section-desc">
+            The final score is a weighted average of <strong>Fit Score</strong> (how well the candidate matches the job)
+            and <strong>Completeness Score</strong> (how complete the CV is). These two weights must sum to 100.
+          </p>
+
+          <div class="weight-pair">
+            <div class="weight-row">
+              <label class="weight-label">Fit Score Weight</label>
+              <input
+                type="range" min="0" max="100" step="1"
+                [ngModel]="fitWeight()"
+                (ngModelChange)="onMainWeightChange('fit', $event)"
+                class="slider slider--fit"
+              />
+              <span class="weight-value">{{ fitWeight() }}%</span>
+            </div>
+            <div class="weight-row">
+              <label class="weight-label">Completeness Weight</label>
+              <input
+                type="range" min="0" max="100" step="1"
+                [ngModel]="completenessWeight()"
+                (ngModelChange)="onMainWeightChange('completeness', $event)"
+                class="slider slider--completeness"
+              />
+              <span class="weight-value">{{ completenessWeight() }}%</span>
+            </div>
+          </div>
+
+          <!-- Visual preview bar -->
+          <div class="weight-preview-bar">
+            <div class="weight-preview-segment weight-preview-segment--fit" [style.width.%]="previewScore().fitPct">
+              Fit {{ previewScore().fitPct }}%
+            </div>
+            <div class="weight-preview-segment weight-preview-segment--completeness" [style.width.%]="previewScore().completenessPct">
+              Comp. {{ previewScore().completenessPct }}%
+            </div>
+          </div>
+
+          <p class="formula-text">Final Score = Fit Score × {{ previewScore().fitPct }}% + Completeness × {{ previewScore().completenessPct }}%</p>
+        </div>
+      }
+    </section>
+
+    <!-- ============================================================ -->
+    <!--  Section 2: Fit Sub-Weights                                   -->
+    <!-- ============================================================ -->
+    <section class="config-section card">
+      <button class="section-header" (click)="toggleSection('fitSub')">
+        <lucide-angular [img]="iconGauge" [size]="20"></lucide-angular>
+        <span class="section-title">Fit Score Breakdown</span>
+        <span class="section-badge">Skills {{ fitSubPreview().requiredPct }}% · Nice {{ fitSubPreview().nicePct }}% · Exp {{ fitSubPreview().expPct }}%</span>
+        <lucide-angular [img]="iconChevron" [size]="18" [class.rotated]="isExpanded('fitSub')"></lucide-angular>
+      </button>
+
+      @if (isExpanded('fitSub')) {
+        <div class="section-body">
+          <p class="section-desc">
+            How the Fit Score is composed from three sub-factors.
+            Values are normalized to sum to 100%.
+          </p>
+
+          <div class="weight-pair">
+            <div class="weight-row">
+              <label class="weight-label">Required Skills</label>
+              <input
+                type="range" min="0" max="100" step="1"
+                [ngModel]="requiredSkillsWeight()"
+                (ngModelChange)="onFitSubWeightChange('required', $event)"
+                class="slider slider--required"
+              />
+              <span class="weight-value">{{ requiredSkillsWeight() }}</span>
+            </div>
+            <div class="weight-row">
+              <label class="weight-label">Nice-to-Have Skills</label>
+              <input
+                type="range" min="0" max="100" step="1"
+                [ngModel]="niceToHaveSkillsWeight()"
+                (ngModelChange)="onFitSubWeightChange('nice', $event)"
+                class="slider slider--nice"
+              />
+              <span class="weight-value">{{ niceToHaveSkillsWeight() }}</span>
+            </div>
+            <div class="weight-row">
+              <label class="weight-label">Experience</label>
+              <input
+                type="range" min="0" max="100" step="1"
+                [ngModel]="experienceWeight()"
+                (ngModelChange)="onFitSubWeightChange('exp', $event)"
+                class="slider slider--exp"
+              />
+              <span class="weight-value">{{ experienceWeight() }}</span>
+            </div>
+          </div>
+
+          <!-- Sub-weights preview bar -->
+          <div class="weight-preview-bar three-part">
+            <div class="weight-preview-segment weight-preview-segment--required" [style.width.%]="fitSubPreview().requiredPct">
+              {{ fitSubPreview().requiredPct }}%
+            </div>
+            <div class="weight-preview-segment weight-preview-segment--nice" [style.width.%]="fitSubPreview().nicePct">
+              {{ fitSubPreview().nicePct }}%
+            </div>
+            <div class="weight-preview-segment weight-preview-segment--exp" [style.width.%]="fitSubPreview().expPct">
+              {{ fitSubPreview().expPct }}%
+            </div>
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- ============================================================ -->
+    <!--  Section 3: Completeness Points                               -->
+    <!-- ============================================================ -->
+    <section class="config-section card">
+      <button class="section-header" (click)="toggleSection('completeness')">
+        <lucide-angular [img]="iconSettings" [size]="20"></lucide-angular>
+        <span class="section-title">Completeness Points</span>
+        <span class="section-badge">Total: {{ completenessPointsTotal() }} pts</span>
+        <lucide-angular [img]="iconChevron" [size]="18" [class.rotated]="isExpanded('completeness')"></lucide-angular>
+      </button>
+
+      @if (isExpanded('completeness')) {
+        <div class="section-body">
+          <p class="section-desc">
+            Points awarded for each present field. The score is normalized to 0–100
+            regardless of total, but keeping them balanced helps maintain meaningful scores.
+          </p>
+
+          <div class="completeness-grid">
+            @for (field of completenessFieldLabels; track field.key) {
+              <div class="completeness-row">
+                <label class="completeness-label">{{ field.label }}</label>
+                <input
+                  type="number" min="0" max="100" step="1"
+                  [ngModel]="completenessPoints()[field.key]"
+                  (ngModelChange)="onCompletenessPointChange(field.key, $event)"
+                  class="completeness-input"
+                />
+                <span class="completeness-unit">pts</span>
+              </div>
+            }
+          </div>
+
+          <div class="completeness-total">
+            Total: <strong>{{ completenessPointsTotal() }}</strong> points
+            @if (completenessPointsTotal() !== 100) {
+              <span class="completeness-warn">(will be normalized to 100%)</span>
+            }
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- ============================================================ -->
+    <!--  Section 4: Custom Criteria                                   -->
+    <!-- ============================================================ -->
+    <section class="config-section card">
+      <button class="section-header" (click)="toggleSection('custom')">
+        <lucide-angular [img]="iconSparkles" [size]="20"></lucide-angular>
+        <span class="section-title">Custom Criteria</span>
+        <span class="section-badge">{{ customCriteria().length }} rule{{ customCriteria().length === 1 ? '' : 's' }}</span>
+        <lucide-angular [img]="iconChevron" [size]="18" [class.rotated]="isExpanded('custom')"></lucide-angular>
+      </button>
+
+      @if (isExpanded('custom')) {
+        <div class="section-body">
+          <p class="section-desc">
+            Add bonus or penalty rules that trigger when specific keywords are found
+            in the candidate's CV. For example, give a +5 bonus for "Docker" or a -10 penalty
+            for missing "security clearance".
+          </p>
+
+          @for (criterion of customCriteria(); track $index; let i = $index) {
+            <div class="criterion-card">
+              <div class="criterion-header">
+                <span class="criterion-label">#{{ i + 1 }}</span>
+                <button class="btn-icon btn-icon--danger" (click)="removeCriterion(i)" title="Remove">
+                  <lucide-angular [img]="iconTrash" [size]="16"></lucide-angular>
+                </button>
+              </div>
+
+              <div class="criterion-fields">
+                <div class="criterion-field">
+                  <label>Name</label>
+                  <input
+                    type="text"
+                    [ngModel]="criterion.name"
+                    (ngModelChange)="updateCriterion(i, { name: $event })"
+                    placeholder="e.g. Docker experience"
+                    class="criterion-input"
+                  />
+                </div>
+
+                <div class="criterion-field criterion-field--row">
+                  <div class="criterion-field">
+                    <label>Type</label>
+                    <select
+                      [ngModel]="criterion.type"
+                      (ngModelChange)="updateCriterion(i, { type: $event })"
+                      class="criterion-select"
+                    >
+                      <option value="bonus">Bonus (+)</option>
+                      <option value="penalty">Penalty (−)</option>
+                    </select>
+                  </div>
+                  <div class="criterion-field">
+                    <label>Points</label>
+                    <input
+                      type="number" min="0" max="50" step="1"
+                      [ngModel]="criterion.points"
+                      (ngModelChange)="updateCriterion(i, { points: $event })"
+                      class="criterion-input criterion-input--short"
+                    />
+                  </div>
+                  <div class="criterion-field">
+                    <label>Match Mode</label>
+                    <select
+                      [ngModel]="criterion.requireAll"
+                      (ngModelChange)="updateCriterion(i, { requireAll: $event === 'true' || $event === true })"
+                      class="criterion-select"
+                    >
+                      <option [ngValue]="false">Any keyword</option>
+                      <option [ngValue]="true">All keywords</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="criterion-field">
+                  <label>Keywords</label>
+                  <div class="keyword-list">
+                    @for (kw of criterion.keywords; track $index; let ki = $index) {
+                      <div class="keyword-row">
+                        <input
+                          type="text"
+                          [ngModel]="kw"
+                          (ngModelChange)="updateKeyword(i, ki, $event)"
+                          placeholder="keyword…"
+                          class="criterion-input"
+                        />
+                        @if (criterion.keywords.length > 1) {
+                          <button class="btn-icon btn-icon--subtle" (click)="removeKeyword(i, ki)" title="Remove keyword">
+                            <lucide-angular [img]="iconX" [size]="14"></lucide-angular>
+                          </button>
+                        }
+                      </div>
+                    }
+                    <button class="btn btn--ghost btn--sm" (click)="addKeyword(i)">
+                      <lucide-angular [img]="iconPlus" [size]="14"></lucide-angular>
+                      Add Keyword
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+          <button class="btn btn--outline btn--add-criterion" (click)="addCriterion()">
+            <lucide-angular [img]="iconPlus" [size]="16"></lucide-angular>
+            Add Custom Criterion
+          </button>
+        </div>
+      }
+    </section>
+
+    <!-- ============================================================ -->
+    <!--  Section 5: Quality Thresholds                                -->
+    <!-- ============================================================ -->
+    <section class="config-section card">
+      <button class="section-header" (click)="toggleSection('thresholds')">
+        <lucide-angular [img]="iconGauge" [size]="20"></lucide-angular>
+        <span class="section-title">Quality Thresholds</span>
+        <span class="section-badge">{{ qualityThresholds().excellent }}+ Excellent</span>
+        <lucide-angular [img]="iconChevron" [size]="18" [class.rotated]="isExpanded('thresholds')"></lucide-angular>
+      </button>
+
+      @if (isExpanded('thresholds')) {
+        <div class="section-body">
+          <p class="section-desc">
+            Defines the score ranges for quality labels shown on the candidate detail page.
+          </p>
+
+          <div class="threshold-grid">
+            <div class="threshold-row">
+              <span class="threshold-badge threshold-badge--excellent">Excellent</span>
+              <label>Score ≥</label>
+              <input
+                type="number" min="0" max="100" step="1"
+                [ngModel]="qualityThresholds().excellent"
+                (ngModelChange)="onThresholdChange('excellent', $event)"
+                class="threshold-input"
+              />
+            </div>
+            <div class="threshold-row">
+              <span class="threshold-badge threshold-badge--good">Good</span>
+              <label>Score ≥</label>
+              <input
+                type="number" min="0" max="100" step="1"
+                [ngModel]="qualityThresholds().good"
+                (ngModelChange)="onThresholdChange('good', $event)"
+                class="threshold-input"
+              />
+            </div>
+            <div class="threshold-row">
+              <span class="threshold-badge threshold-badge--fair">Fair</span>
+              <label>Score ≥</label>
+              <input
+                type="number" min="0" max="100" step="1"
+                [ngModel]="qualityThresholds().fair"
+                (ngModelChange)="onThresholdChange('fair', $event)"
+                class="threshold-input"
+              />
+            </div>
+            <div class="threshold-row">
+              <span class="threshold-badge threshold-badge--poor">Poor</span>
+              <label>Score &lt;</label>
+              <span class="threshold-fixed">{{ qualityThresholds().fair }}</span>
+            </div>
+          </div>
+        </div>
+      }
+    </section>
+  }
+</div>

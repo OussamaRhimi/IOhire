@@ -3,10 +3,136 @@ import { ollamaChat } from './ollama';
 import { extractTextFromResume } from './resume-text';
 import { isCvTemplateKey, renderCvMarkdownFromTemplate, type CvTemplateKey, type ResumeContent } from './cv-templates';
 
+/* ------------------------------------------------------------------ */
+/*  Evaluation Config                                                  */
+/* ------------------------------------------------------------------ */
+
+export type CompletenessPointsConfig = {
+  fullName: number;
+  email: number;
+  phone: number;
+  location: number;
+  links: number;
+  linkedin: number;
+  portfolio: number;
+  summary: number;
+  competencies: number;
+  experience: number;
+  experienceDates: number;
+  education: number;
+};
+
+export type CustomCriterion = {
+  name: string;
+  type: 'bonus' | 'penalty';
+  points: number;
+  keywords: string[];
+  requireAll: boolean;
+};
+
+export type QualityThresholds = {
+  excellent: number;
+  good: number;
+  fair: number;
+};
+
+export type EvaluationConfig = {
+  fitWeight: number;
+  completenessWeight: number;
+  requiredSkillsWeight: number;
+  niceToHaveSkillsWeight: number;
+  experienceWeight: number;
+  completenessPoints: CompletenessPointsConfig;
+  customCriteria: CustomCriterion[];
+  qualityThresholds: QualityThresholds;
+};
+
+export const DEFAULT_EVALUATION_CONFIG: EvaluationConfig = {
+  fitWeight: 75,
+  completenessWeight: 25,
+  requiredSkillsWeight: 75,
+  niceToHaveSkillsWeight: 15,
+  experienceWeight: 10,
+  completenessPoints: {
+    fullName: 10,
+    email: 15,
+    phone: 5,
+    location: 5,
+    links: 5,
+    linkedin: 5,
+    portfolio: 5,
+    summary: 10,
+    competencies: 5,
+    experience: 15,
+    experienceDates: 10,
+    education: 10,
+  },
+  customCriteria: [],
+  qualityThresholds: { excellent: 80, good: 60, fair: 40 },
+};
+
+export function mergeEvaluationConfig(raw: unknown): EvaluationConfig {
+  const d = DEFAULT_EVALUATION_CONFIG;
+  if (!raw || typeof raw !== 'object') return { ...d, completenessPoints: { ...d.completenessPoints }, customCriteria: [], qualityThresholds: { ...d.qualityThresholds } };
+  const r = raw as any;
+
+  const fitWeight = clampNum(r.fitWeight, 0, 100, d.fitWeight);
+  const completenessWeight = clampNum(r.completenessWeight, 0, 100, d.completenessWeight);
+  const requiredSkillsWeight = clampNum(r.requiredSkillsWeight, 0, 100, d.requiredSkillsWeight);
+  const niceToHaveSkillsWeight = clampNum(r.niceToHaveSkillsWeight, 0, 100, d.niceToHaveSkillsWeight);
+  const experienceWeight = clampNum(r.experienceWeight, 0, 100, d.experienceWeight);
+
+  const cp = r.completenessPoints && typeof r.completenessPoints === 'object' ? r.completenessPoints : {};
+  const completenessPoints: CompletenessPointsConfig = {
+    fullName: clampNum(cp.fullName, 0, 100, d.completenessPoints.fullName),
+    email: clampNum(cp.email, 0, 100, d.completenessPoints.email),
+    phone: clampNum(cp.phone, 0, 100, d.completenessPoints.phone),
+    location: clampNum(cp.location, 0, 100, d.completenessPoints.location),
+    links: clampNum(cp.links, 0, 100, d.completenessPoints.links),
+    linkedin: clampNum(cp.linkedin, 0, 100, d.completenessPoints.linkedin),
+    portfolio: clampNum(cp.portfolio, 0, 100, d.completenessPoints.portfolio),
+    summary: clampNum(cp.summary, 0, 100, d.completenessPoints.summary),
+    competencies: clampNum(cp.competencies, 0, 100, d.completenessPoints.competencies),
+    experience: clampNum(cp.experience, 0, 100, d.completenessPoints.experience),
+    experienceDates: clampNum(cp.experienceDates, 0, 100, d.completenessPoints.experienceDates),
+    education: clampNum(cp.education, 0, 100, d.completenessPoints.education),
+  };
+
+  const customCriteria: CustomCriterion[] = [];
+  if (Array.isArray(r.customCriteria)) {
+    for (const c of r.customCriteria) {
+      if (!c || typeof c !== 'object') continue;
+      const name = typeof c.name === 'string' ? c.name.trim() : '';
+      const type = c.type === 'penalty' ? 'penalty' : 'bonus';
+      const points = clampNum(c.points, 0, 50, 5);
+      const keywords = Array.isArray(c.keywords) ? c.keywords.filter((k: any) => typeof k === 'string' && k.trim()).map((k: any) => k.trim()) : [];
+      const requireAll = !!c.requireAll;
+      if (name && keywords.length > 0) customCriteria.push({ name, type, points, keywords, requireAll });
+    }
+  }
+
+  const qt = r.qualityThresholds && typeof r.qualityThresholds === 'object' ? r.qualityThresholds : {};
+  const qualityThresholds: QualityThresholds = {
+    excellent: clampNum(qt.excellent, 0, 100, d.qualityThresholds.excellent),
+    good: clampNum(qt.good, 0, 100, d.qualityThresholds.good),
+    fair: clampNum(qt.fair, 0, 100, d.qualityThresholds.fair),
+  };
+
+  return { fitWeight, completenessWeight, requiredSkillsWeight, niceToHaveSkillsWeight, experienceWeight, completenessPoints, customCriteria, qualityThresholds };
+}
+
+function clampNum(v: unknown, min: number, max: number, fallback: number): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
 type CandidateEntity = {
   id: number;
   fullName?: string | null;
   email?: string | null;
+  linkedin?: string | null;
+  portfolio?: string | null;
   cvTemplateKey?: string | null;
   resume?: { url: string; mime?: string; ext?: string } | Array<{ url: string; mime?: string; ext?: string }>;
   jobPosting?: { requirements?: unknown } | null;
@@ -18,13 +144,16 @@ const PARSER_SYSTEM_PROMPT =
   'IMPORTANT: For all dates (startDate, endDate), use the format "Month YYYY" (e.g. "June 2025"). ' +
   'If only a year is given, use "YYYY". If the role is current/ongoing, set endDate to "Present". ' +
   'CRITICAL CLASSIFICATION RULES: ' +
+  '- "skills" is ONLY for short technology/tool names (e.g. "React", "Node.js", "Docker", "PostgreSQL", "Git"). ' +
+  '- "competencies" is for accomplishment descriptions or capability statements (e.g. "Built a complete authentication system", "Implemented 2FA with TOTP"). ' +
+  '- Do NOT put full sentences or descriptions in "skills". If it reads like a sentence, it belongs in "competencies". ' +
   '- "education" is for degrees, diplomas, academic programs at universities, institutes, schools, or colleges (e.g. "Software Engineering at ISIMS", "Bachelor at MIT"). ' +
   '- "experience" is ONLY for professional work: jobs, internships at companies, freelance work. ' +
   '- If someone is a STUDENT at a university/institute/school, that belongs in "education", NOT "experience". ' +
   '- Internships at companies (not schools) go in "experience". ' +
   '- Academic projects or student roles at educational institutions go in "education" or "projects", NOT "experience". ' +
   'Use this shape: { contact: { fullName?: string, email?: string, phone?: string, location?: string, links?: string[] }, ' +
-  'summary?: string, skills: string[], experience: Array<{ company?: string, title?: string, startDate?: string, endDate?: string, highlights?: string[] }>, ' +
+  'summary?: string, skills: string[], competencies?: string[], experience: Array<{ company?: string, title?: string, startDate?: string, endDate?: string, highlights?: string[] }>, ' +
   'education?: Array<{ school?: string, degree?: string, startDate?: string, endDate?: string }>, certifications?: string[], projects?: Array<{ name?: string, description?: string, links?: string[] }> }';
 
 const GENERATOR_SYSTEM_PROMPT =
@@ -291,10 +420,94 @@ function normalizeParsedData(parsed: Record<string, unknown>): Record<string, un
   const summary = asTrimmedString(parsed.summary);
   const certifications = uniqStrings(asStringArray(parsed.certifications));
 
+  // Separate skills (short tech names) from competencies (achievement descriptions)
+  const COMPETENCY_THRESHOLD = 40; // chars – anything longer is likely a competency
+  const VERB_START = /^(built|created|designed|developed|implemented|added|set\s+up|managed|led|reduced|improved|introduced|wrote|deployed|integrated|maintained|established|architected|automated|configured|migrated|optimized|launched|delivered|coordinated|conducted)/i;
+  const pureSkills: string[] = [];
+  const autoCompetencies: string[] = [];
+  for (const s of skills) {
+    if (s.length > COMPETENCY_THRESHOLD || VERB_START.test(s) || (s.includes(' ') && s.split(' ').length > 5)) {
+      autoCompetencies.push(s);
+    } else {
+      pureSkills.push(s);
+    }
+  }
+  const parsedCompetencies = uniqStrings(asStringArray(parsed.competencies));
+  const competencies = uniqStrings([...autoCompetencies, ...parsedCompetencies]);
+
+  // ── Extract tech keywords mentioned inside competencies and add them to skills ──
+  const skillLower = new Set(pureSkills.map((s) => s.toLowerCase()));
+  const techExtracted: string[] = [];
+
+  // Tokens that look like tech names when found inside a sentence.
+  // We capture: camelCase/PascalCase words (ReactJS, ExpressJS, NodeJS, MongoDB …),
+  // dotted names (Node.js, Vue.js, ASP.NET …), words with + or # (C++, C#),
+  // and a curated set of lower-case tech names that would otherwise be missed.
+  const TECH_TOKEN_RX =
+    /\b([A-Z][a-z]+(?:[A-Z][a-zA-Z]*)+)\b|(?<![.\w])([A-Za-z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*)+)(?![.\w])|\b(C\+\+|C#|F#)\b/g;
+
+  const KNOWN_LOWER: Set<string> = new Set([
+    'react', 'angular', 'vue', 'svelte', 'nextjs', 'nuxtjs', 'gatsby',
+    'node', 'nodejs', 'express', 'expressjs', 'nestjs', 'fastify', 'hapi', 'koa',
+    'django', 'flask', 'fastapi', 'rails', 'laravel', 'symfony', 'spring', 'springboot',
+    'typescript', 'javascript', 'python', 'java', 'kotlin', 'swift', 'rust', 'golang', 'go',
+    'ruby', 'php', 'perl', 'scala', 'elixir', 'haskell', 'clojure', 'dart', 'lua',
+    'html', 'css', 'sass', 'scss', 'less', 'tailwind', 'tailwindcss', 'bootstrap',
+    'sql', 'mysql', 'postgresql', 'postgres', 'sqlite', 'mariadb', 'oracle',
+    'mongodb', 'redis', 'elasticsearch', 'cassandra', 'dynamodb', 'couchdb', 'neo4j',
+    'docker', 'kubernetes', 'k8s', 'terraform', 'ansible', 'jenkins', 'gitlab', 'github',
+    'aws', 'azure', 'gcp', 'firebase', 'heroku', 'vercel', 'netlify', 'cloudflare',
+    'graphql', 'rest', 'grpc', 'websocket', 'socket.io',
+    'webpack', 'vite', 'esbuild', 'rollup', 'parcel', 'babel',
+    'jest', 'mocha', 'cypress', 'playwright', 'selenium', 'vitest',
+    'git', 'linux', 'nginx', 'apache', 'kafka', 'rabbitmq',
+    'figma', 'sketch', 'photoshop', 'illustrator',
+    'tensorflow', 'pytorch', 'keras', 'pandas', 'numpy', 'scikit-learn', 'opencv',
+    'unity', 'unreal', 'flutter', 'reactnative', 'ionic', 'xamarin',
+    'strapi', 'contentful', 'sanity', 'wordpress', 'drupal',
+    'jira', 'trello', 'confluence', 'slack', 'notion',
+    'oauth', 'jwt', 'saml', 'ldap',
+    'ci/cd', 'cicd', 'devops', 'agile', 'scrum',
+    'hadoop', 'spark', 'airflow', 'dbt', 'snowflake', 'bigquery',
+    'power bi', 'tableau', 'looker', 'grafana', 'prometheus',
+    'solidity', 'web3', 'ethereum', 'blockchain',
+  ]);
+
+  // Word-boundary scan for known lower-case tech names
+  const WORD_SPLIT_RX = /[^a-zA-Z0-9+#/.]+/;
+
+  for (const comp of competencies) {
+    // 1. Regex-based extraction (PascalCase, dotted, C++/C#)
+    let m: RegExpExecArray | null;
+    TECH_TOKEN_RX.lastIndex = 0;
+    while ((m = TECH_TOKEN_RX.exec(comp)) !== null) {
+      const token = (m[1] || m[2] || m[3]).trim();
+      if (token && !skillLower.has(token.toLowerCase())) {
+        techExtracted.push(token);
+        skillLower.add(token.toLowerCase());
+      }
+    }
+
+    // 2. Scan individual words against the curated list
+    const words = comp.split(WORD_SPLIT_RX);
+    for (const w of words) {
+      const lower = w.toLowerCase();
+      if (!lower || lower.length < 2) continue;
+      if (KNOWN_LOWER.has(lower) && !skillLower.has(lower)) {
+        // Preserve original casing from the competency text
+        techExtracted.push(w);
+        skillLower.add(lower);
+      }
+    }
+  }
+
+  const finalSkills = uniqStrings([...pureSkills, ...techExtracted]);
+
   return {
     ...parsed,
     contact,
-    skills,
+    skills: finalSkills,
+    competencies,
     experience,
     education,
     projects,
@@ -528,8 +741,9 @@ function calculateExperienceYears(parsed: Record<string, unknown>): number {
   return totalMs / (365.25 * 24 * 60 * 60 * 1000);
 }
 
-function deterministicEvaluate(requirements: unknown, parsed: Record<string, unknown>) {
+function deterministicEvaluate(requirements: unknown, parsed: Record<string, unknown>, candidateMeta?: { linkedin?: string; portfolio?: string }) {
   const requirementsObj = (requirements && typeof requirements === 'object' ? requirements : {}) as any;
+  const cfg = mergeEvaluationConfig(requirementsObj.evaluationConfig);
   const required = uniqStrings(asStringArray(requirementsObj.skillsRequired));
   const niceToHave = uniqStrings(asStringArray(requirementsObj.skillsNiceToHave));
 
@@ -559,7 +773,13 @@ function deterministicEvaluate(requirements: unknown, parsed: Record<string, unk
   const actualYears = calculateExperienceYears(parsed);
   const experienceCoverage = minYears ? Math.max(0, Math.min(1, actualYears / minYears)) : 1;
 
-  const fitScore = clampScore(requiredCoverage * 75 + niceCoverage * 15 + experienceCoverage * 10) ?? 0;
+  // Configurable fit sub-weights (normalized to sum=100)
+  const fitSubTotal = cfg.requiredSkillsWeight + cfg.niceToHaveSkillsWeight + cfg.experienceWeight;
+  const rw = fitSubTotal > 0 ? cfg.requiredSkillsWeight / fitSubTotal * 100 : 75;
+  const nw = fitSubTotal > 0 ? cfg.niceToHaveSkillsWeight / fitSubTotal * 100 : 15;
+  const ew = fitSubTotal > 0 ? cfg.experienceWeight / fitSubTotal * 100 : 10;
+
+  const fitScore = clampScore(requiredCoverage * rw + niceCoverage * nw + experienceCoverage * ew) ?? 0;
 
   const contact = (parsed.contact && typeof parsed.contact === 'object' ? parsed.contact : {}) as any;
   const experience = Array.isArray(parsed.experience) ? parsed.experience : [];
@@ -570,26 +790,61 @@ function deterministicEvaluate(requirements: unknown, parsed: Record<string, unk
   const hasPhone = !!asTrimmedString(contact.phone);
   const hasLocation = !!asTrimmedString(contact.location);
   const hasLinks = asStringArray(contact.links).length > 0;
+  const hasLinkedin = !!(candidateMeta?.linkedin?.trim()) || asStringArray(contact.links).some((l: string) => /linkedin\.com/i.test(l));
+  const hasPortfolio = !!(candidateMeta?.portfolio?.trim()) || asStringArray(contact.links).some((l: string) => /github\.com|gitlab\.com|bitbucket\.org|portfolio|behance|dribbble/i.test(l));
   const hasSummary = !!asTrimmedString(parsed.summary);
+  const hasCompetencies = asStringArray(parsed.competencies).length > 0;
   const hasEducation = education.length > 0;
   const hasExperience = experience.length > 0;
   const hasExperienceDates =
     hasExperience &&
     (experience as any[]).every((row) => !!normalizeDateText(row?.startDate) && !!normalizeDateText(row?.endDate));
 
+  // Configurable completeness points
+  const cp = cfg.completenessPoints;
   let completeness = 0;
-  if (hasFullName) completeness += 10;
-  if (hasEmail) completeness += 20;
-  if (hasPhone) completeness += 10;
-  if (hasLocation) completeness += 10;
-  if (hasLinks) completeness += 5;
-  if (hasSummary) completeness += 10;
-  if (hasExperience) completeness += 15;
-  if (hasExperienceDates) completeness += 10;
-  if (hasEducation) completeness += 10;
+  const cpTotal = cp.fullName + cp.email + cp.phone + cp.location + cp.links + cp.linkedin + cp.portfolio + cp.summary + cp.competencies + cp.experience + cp.experienceDates + cp.education;
+  if (hasFullName) completeness += cp.fullName;
+  if (hasEmail) completeness += cp.email;
+  if (hasPhone) completeness += cp.phone;
+  if (hasLocation) completeness += cp.location;
+  if (hasLinks) completeness += cp.links;
+  if (hasLinkedin) completeness += cp.linkedin;
+  if (hasPortfolio) completeness += cp.portfolio;
+  if (hasSummary) completeness += cp.summary;
+  if (hasCompetencies) completeness += cp.competencies;
+  if (hasExperience) completeness += cp.experience;
+  if (hasExperienceDates) completeness += cp.experienceDates;
+  if (hasEducation) completeness += cp.education;
+  if (hasExperienceDates) completeness += cp.experienceDates;
+  if (hasEducation) completeness += cp.education;
 
-  const completenessScore = clampScore(completeness) ?? 0;
-  const score = clampScore(fitScore * 0.75 + completenessScore * 0.25) ?? 0;
+  // Normalize to 0–100 in case points don't sum to 100
+  const completenessScore = cpTotal > 0 ? clampScore(completeness / cpTotal * 100) ?? 0 : 0;
+
+  // Configurable main weights (normalized to sum=100)
+  const mainTotal = cfg.fitWeight + cfg.completenessWeight;
+  const fw = mainTotal > 0 ? cfg.fitWeight / mainTotal : 0.75;
+  const cw = mainTotal > 0 ? cfg.completenessWeight / mainTotal : 0.25;
+  let score = clampScore(fitScore * fw + completenessScore * cw) ?? 0;
+
+  // Custom criteria bonuses/penalties
+  const customResults: Array<{ name: string; type: 'bonus' | 'penalty'; points: number; matched: boolean }> = [];
+  if (cfg.customCriteria.length > 0) {
+    const evidenceText = evidence.textNormalized;
+    for (const criterion of cfg.customCriteria) {
+      const kwNorms = criterion.keywords.map((k) => k.toLowerCase().trim()).filter(Boolean);
+      if (kwNorms.length === 0) continue;
+      const matched = criterion.requireAll
+        ? kwNorms.every((kw) => evidenceText.includes(kw))
+        : kwNorms.some((kw) => evidenceText.includes(kw));
+      customResults.push({ name: criterion.name, type: criterion.type, points: criterion.points, matched });
+      if (matched) {
+        if (criterion.type === 'bonus') score = Math.min(100, score + criterion.points);
+        else score = Math.max(0, score - criterion.points);
+      }
+    }
+  }
 
   const missingFields: string[] = [];
   if (!hasFullName) missingFields.push('fullName');
@@ -597,7 +852,10 @@ function deterministicEvaluate(requirements: unknown, parsed: Record<string, unk
   if (!hasPhone) missingFields.push('phone');
   if (!hasLocation) missingFields.push('location');
   if (!hasLinks) missingFields.push('links');
+  if (!hasLinkedin) missingFields.push('linkedin');
+  if (!hasPortfolio) missingFields.push('portfolio');
   if (!hasSummary) missingFields.push('summary');
+  if (!hasCompetencies) missingFields.push('competencies');
   if (!hasEducation) missingFields.push('education');
   if (!hasExperience) missingFields.push('experience');
   if (hasExperience && !hasExperienceDates) missingFields.push('experienceDates');
@@ -606,10 +864,10 @@ function deterministicEvaluate(requirements: unknown, parsed: Record<string, unk
     `Deterministic scoring: required=${matchedRequired.length}/${required.length}, ` +
     `nice=${matchedNice.length}/${niceToHave.length}, ` +
     `experienceYears=${actualYears.toFixed(1)}${minYears ? ` (required ${minYears})` : ''}. ` +
-    `Weights: fit 75%, completeness 25%.`;
+    `Weights: fit ${cfg.fitWeight}%, completeness ${cfg.completenessWeight}%.`;
 
   return {
-    score,
+    score: clampScore(score) ?? 0,
     fitScore,
     completenessScore,
     matchedSkills: matchedRequired,
@@ -619,6 +877,8 @@ function deterministicEvaluate(requirements: unknown, parsed: Record<string, unk
     matchedNiceToHave: matchedNice,
     missingNiceToHave: missingNice,
     experienceYears: Math.round(actualYears * 10) / 10,
+    customResults: customResults.length > 0 ? customResults : undefined,
+    evaluationConfig: cfg,
   };
 }
 
@@ -782,7 +1042,10 @@ export async function processCandidate(candidateId: number): Promise<void> {
     const parsed = normalizeParsedData(parsedModel.value);
 
     const t2 = Date.now();
-    const evaluation = deterministicEvaluate(candidate.jobPosting?.requirements ?? {}, parsed);
+    const evaluation = deterministicEvaluate(candidate.jobPosting?.requirements ?? {}, parsed, {
+      linkedin: (candidate as any).linkedin ?? undefined,
+      portfolio: (candidate as any).portfolio ?? undefined,
+    });
     log('info', `candidate ${candidateId} evaluated deterministically in ${Date.now() - t2}ms`);
 
     const evalCompact = {

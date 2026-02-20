@@ -1,5 +1,5 @@
 @startuml
-title Sprint 2 - Use Case Diagram (Academic)
+title Sprint 2 - Use Case Diagram
 left to right direction
 skinparam packageStyle rectangle
 skinparam shadowing false
@@ -8,38 +8,38 @@ actor Candidate as A_Candidate
 actor "HR User" as A_HR
 
 rectangle "IOhire - Sprint 2" {
-  package "Public CandidateApplication Flow" {
-    usecase "UC21 - Browse Open JobPostings" as UC21
-    usecase "UC22 - Submit CandidateApplication" as UC22
-    usecase "UC23 - Upload Resume (PDF/DOCX/TXT)" as UC23
-    usecase "UC24 - Provide Consent" as UC24
-    usecase "UC25 - Track CandidateApplication (publicToken)" as UC25
-    usecase "UC26 - Delete CandidateApplication" as UC26
+  package "Public Application Flow" {
+    usecase "UC1 - Browse Open Job Postings" as UC1
+    usecase "UC2 - Submit Application" as UC2
+    usecase "UC3 - Upload Resume (PDF/DOCX/TXT)" as UC3
+    usecase "UC4 - Provide Consent" as UC4
+    usecase "UC5 - Track Application (publicToken)" as UC5
+    usecase "UC6 - Delete Application (GDPR)" as UC6
   }
 
-  package "HR CandidateApplication Review" {
-    usecase "UC27 - List CandidateApplications" as UC27
-    usecase "UC28 - View CandidateApplication Detail" as UC28
-    usecase "UC29 - Update CandidateApplication Status" as UC29
-    usecase "UC30 - Add HR Note to CandidateApplication" as UC30
-    usecase "UC31 - Download Candidate Resume" as UC31
+  package "HR Candidate Review" {
+    usecase "UC7 - List Candidates" as UC7
+    usecase "UC8 - View Candidate Detail" as UC8
+    usecase "UC9 - Update Candidate Status" as UC9
+    usecase "UC10 - Add HR Notes" as UC10
+    usecase "UC11 - Download Resume" as UC11
   }
 }
 
-A_Candidate --> UC21
-A_Candidate --> UC22
-A_Candidate --> UC25
-A_Candidate --> UC26
+A_Candidate --> UC1
+A_Candidate --> UC2
+A_Candidate --> UC5
+A_Candidate --> UC6
 
-UC22 ..> UC23 : <<include>>
-UC22 ..> UC24 : <<include>>
+UC2 ..> UC3 : <<include>>
+UC2 ..> UC4 : <<include>>
 
-A_HR --> UC27
-A_HR --> UC28
-A_HR --> UC29
-A_HR --> UC30
-A_HR --> UC31
+A_HR --> UC7
+A_HR --> UC8
+A_HR --> UC9
+A_HR --> UC10
+A_HR --> UC11
 
-UC28 ..> UC27 : <<extend>>
+UC8 ..> UC7 : <<extend>>
 
 @enduml

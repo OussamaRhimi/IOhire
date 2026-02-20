@@ -1,5 +1,5 @@
 @startuml
-title IOhire - Full Class Diagram (Academic Domain Model)
+title IOhire - Full Class Diagram
 
 skinparam classAttributeIconSize 0
 skinparam shadowing false
@@ -7,227 +7,163 @@ skinparam linetype ortho
 left to right direction
 
 '======================
-' Core users
+' Actors
 '======================
-abstract class User {
-  +userId: int
-  +fullName: string
-  +email: string
-  --
-  +authenticate(password: string): boolean
-  +logout(): void
+class Visitor <<anonymous>> {
+  +sessionId: string
 }
 
-class Candidate {
-  --
-  +submitApplication(jobId: int, resume: Resume): CandidateApplication
-  +trackApplication(token: string): ApplicationStatus
-  +deleteApplication(token: string): void
-  +requestRecommendations(resume: Resume): JobRecommendation[*]
-}
-
-class HRUser {
+class HRUser <<Strapi Admin>> {
   +email: string
   +password: string
   +role: string
-  --
-  +createJobPosting(data): JobPosting
-  +updateJobPosting(jobId: int, patch): JobPosting
-  +filterCandidates(status: ApplicationStatus, scoreRule: string, jobId: int): CandidateApplication[*]
-  +applyBulkStatus(candidateIds: int[*], status: ApplicationStatus): int
 }
 
-User <|-- Candidate
-User <|-- HRUser
+'======================
+' Core entities
+'======================
+class Candidate {
+  +id: int
+  +fullName: string
+  +email: email
+  +linkedin: string
+  +portfolio: string
+  +resume: Media
+  +status: ApplicationStatus
+  +score: decimal
+  +publicToken: string
+  +consent: boolean
+  +consentAt: datetime
+  +retentionUntil: datetime
+  +hrNotes: text
+  +extractedData: json
+  +standardizedCvMarkdown: text
+  +cvTemplateKey: CvTemplateKey
+  +createdAt: datetime
+  +updatedAt: datetime
+}
 
-'======================
-' Recruitment entities
-'======================
 class JobPosting {
-  +jobId: int
+  +id: int
   +title: string
   +description: text
+  +requirements: Requirements
   +status: JobPostingStatus
   +createdAt: datetime
   +updatedAt: datetime
-  --
-  +openPosting(): void
-  +closePosting(): void
-  +updateDetails(title: string, description: text): void
 }
 
-class JobRequirement {
+class Skill {
+  +id: int
+  +name: string <<unique>>
+}
+
+class Department {
+  +id: int
+  +name: string <<unique>>
+}
+
+'======================
+' Embedded value objects (JSON)
+'======================
+class Requirements <<value object>> {
   +skillsRequired: string[*]
   +skillsNiceToHave: string[*]
   +departments: string[*]
   +minYearsExperience: int
   +notes: string
-  --
-  +addRequiredSkill(skill: string): void
-  +removeRequiredSkill(skill: string): void
-  +addDepartment(department: string): void
-  +setMinYearsExperience(years: int): void
 }
 
-class Skill {
-  +skillId: int
-  +name: string
-  --
-  +add(name: string): Skill
-  +update(name: string): void
-  +delete(): void
-  +search(query: string): Skill[*]
+class EvaluationConfig <<value object>> {
+  +fitWeight: int
+  +completenessWeight: int
+  +fitSubWeights: json
+  +completenessPoints: json
+  +qualityThresholds: json
+  +customCriteria: CustomCriterion[*]
 }
 
-class Department {
-  +departmentId: int
-  +name: string
-  --
-  +add(name: string): Department
-  +update(name: string): void
-  +delete(): void
-  +search(query: string): Department[*]
-}
-
-class CandidateApplication <<association class>> {
-  +applicationId: int
-  +publicToken: string
-  +consent: boolean
-  +consentAt: datetime
-  +retentionUntil: datetime
-  +status: ApplicationStatus
-  +score: decimal
-  +hrNotes: text
-  +createdAt: datetime
-  +updatedAt: datetime
-  --
-  +setStatus(status: ApplicationStatus): void
-  +setScore(score: decimal): void
-  +setHRNotes(notes: text): void
-  +markRetention(until: datetime): void
-}
-
-class Resume {
-  +fileId: int
-  +fileName: string
-  +url: string
-  +mimeType: string
-  +sizeBytes: long
-  --
-  +validateType(): boolean
-  +validateSize(maxBytes: long): boolean
-}
-
-Candidate "1" -- "0..*" JobPosting : appliesFor >
-(Candidate, JobPosting) .. CandidateApplication
-
-HRUser "1" -- "0..*" JobPosting : manages >
-HRUser "1" -- "0..*" CandidateApplication : reviews >
-
-JobPosting "1" *-- "1" JobRequirement
-JobRequirement "0..*" -- "0..*" Skill : uses >
-JobRequirement "0..*" -- "0..*" Department : uses >
-
-CandidateApplication "1" *-- "1" Resume
-
-'======================
-' AI-related domain classes
-'======================
-class ExtractedData {
-  +summary: string
-  +skills: string[*]
-  +languages: string[*]
-  +projects: string[*]
-  +missingFields: string[*]
-  --
-  +normalizeSkills(): void
-  +mergeFromParser(raw): void
-}
-
-class EvaluationReport {
-  +fitScore: decimal
-  +completenessScore: decimal
-  +totalScore: decimal
-  +missingSkills: string[*]
-  +missingFields: string[*]
-  +notes: string
-  --
-  +calculateTotal(): decimal
-}
-
-class StandardizedCV {
-  +markdown: text
-  +templateKey: CvTemplateKey
-  +generatedAt: datetime
-  --
-  +renderMarkdown(): text
-}
-
-class CVTemplate {
+class CVTemplate <<catalog>> {
   +key: CvTemplateKey
   +name: string
   +description: string
-  --
-  +render(content: ExtractedData): StandardizedCV
 }
 
-class RecommendationRequest {
-  +resumeMimeType: string
-  +resumeSizeBytes: long
-  --
-  +isValid(): boolean
+'======================
+' AI service
+'======================
+class AIProcessor <<service>> {
+  +processCandidate(candidateId: int): void
+  +extractResumeText(resume: Media): string
+  +parseCV(text: string): json
+  +evaluateFit(data: json, req: Requirements): decimal
+  +generateStandardizedCV(data: json, template: CVTemplate): text
+  +recommendJobPostings(resume: Media): JobRecommendation[*]
 }
 
-class SkillProfile {
-  +skills: string[*]
-  +source: string
-  --
-  +dedupe(): void
-}
-
-class JobRecommendation {
+class JobRecommendation <<transient>> {
+  +jobId: int
+  +title: string
   +compatibility: decimal
   +matchedRequired: string[*]
   +missingRequired: string[*]
   +matchedNiceToHave: string[*]
   +missingNiceToHave: string[*]
-  --
-  +computeCompatibility(): decimal
 }
 
-class AIProcessor <<AI>> {
-  +processApplication(appId: int): void
-  +extractResumeText(resume: Resume): string
-  +parseCV(text: string): ExtractedData
-  +evaluateFit(data: ExtractedData, req: JobRequirement): EvaluationReport
-  +generateStandardCV(data: ExtractedData, template: CVTemplate): StandardizedCV
+class AnalyticsSnapshot <<transient>> {
+  +totalJobPostings: int
+  +totalCandidates: int
+  +averageScore: decimal
+  +statusDistribution: json
+  +scoreHistogram: json
+  +submissionsOverTime: json
 }
 
-class RecommendationEngine <<AI>> {
-  +extractSkills(req: RecommendationRequest): SkillProfile
-  +rankOpenJobs(skills: SkillProfile, jobs: JobPosting[*]): JobRecommendation[*]
-  +topMatches(ranked: JobRecommendation[*]): JobRecommendation[*]
+class ChatSession <<transient>> {
+  +messages: ChatMessage[*]
+  +maxHistory: int = 20
+  +maxMsgLength: int = 1000
 }
 
-CandidateApplication "1" o-- "0..1" ExtractedData
-CandidateApplication "1" o-- "0..1" EvaluationReport
-CandidateApplication "1" o-- "0..1" StandardizedCV
-StandardizedCV "1" --> "1" CVTemplate : basedOn >
+class ChatMessage <<transient>> {
+  +role: ChatRole
+  +content: string
+}
 
-AIProcessor ..> CandidateApplication : updates status/score >
-AIProcessor ..> Resume
-AIProcessor ..> JobRequirement
-AIProcessor ..> ExtractedData
-AIProcessor ..> EvaluationReport
-AIProcessor ..> StandardizedCV
-AIProcessor ..> CVTemplate
+'======================
+' Relationships
+'======================
+Candidate "*" --> "1" JobPosting : applies to >
+JobPosting "1" *-- "1" Requirements : contains >
+Requirements "0..1" *-- "0..1" EvaluationConfig : configures >
+Requirements "0..*" ..> "0..*" Skill : references >
+Requirements "0..*" ..> "0..*" Department : references >
 
-RecommendationEngine ..> RecommendationRequest
-RecommendationEngine ..> SkillProfile
-RecommendationEngine ..> JobPosting
-RecommendationEngine ..> JobRecommendation
+HRUser "1" --> "0..*" JobPosting : manages >
+HRUser "1" --> "0..*" Candidate : reviews >
+HRUser ..> AnalyticsSnapshot : views >
+
+AnalyticsSnapshot ..> Candidate : aggregates >
+AnalyticsSnapshot ..> JobPosting : aggregates >
+
+Visitor ..> JobPosting : browses (open) >
+Visitor ..> Candidate : submits / tracks / deletes >
+Visitor ..> JobRecommendation : requests >
+Visitor ..> ChatSession : chats >
+
+ChatSession "1" *-- "1..*" ChatMessage : contains >
+AIProcessor ..> ChatSession : responds to >
+
+Candidate "1" --> "0..1" CVTemplate : uses >
+AIProcessor ..> Candidate : processes >
+AIProcessor ..> JobPosting : queries >
+AIProcessor ..> Requirements : reads >
+AIProcessor ..> EvaluationConfig : applies >
+AIProcessor ..> CVTemplate : renders with >
+AIProcessor ..> JobRecommendation : produces >
+AIProcessor ..> ChatSession : responds to >
 JobRecommendation "*" --> "1" JobPosting : targets >
-Candidate ..> JobRecommendation : views >
 
 '======================
 ' Enums
@@ -247,6 +183,18 @@ enum JobPostingStatus {
   draft
   open
   closed
+}
+
+enum QualityLabel {
+  excellent  ' >= 80
+  good       ' >= 60
+  fair       ' >= 40
+  poor       ' < 40
+}
+
+enum ChatRole {
+  user
+  assistant
 }
 
 enum CvTemplateKey {

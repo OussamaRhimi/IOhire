@@ -16,7 +16,7 @@ export default {
       method: 'PUT',
       path: '/meta/default-template',
       handler: 'meta.setDefaultTemplate',
-      config: { auth: false },
+      config: { auth: { scope: [] } },
     },
   ],
 };

@@ -1,5 +1,5 @@
 @startuml
-title Sprint 3 - Class Diagram (Academic Domain Model)
+title Sprint 3 - Class Diagram
 
 skinparam classAttributeIconSize 0
 skinparam shadowing false
@@ -7,143 +7,60 @@ skinparam linetype ortho
 left to right direction
 
 class Candidate {
-  --
-  +requestRecommendations(resume: Resume): JobRecommendation[*]
-}
-
-class CandidateApplication {
-  +applicationId: int
+  +id: int
   +status: ApplicationStatus
   +score: decimal
-  +cvTemplateKey: CvTemplateKey
   +extractedData: json
   +standardizedCvMarkdown: text
-  --
-  +setStatus(status: ApplicationStatus): void
-  +setScore(score: decimal): void
-}
-
-class Resume {
-  +fileId: int
-  +url: string
-  +mimeType: string
-  +sizeBytes: long
-  --
-  +loadText(): string
+  +cvTemplateKey: CvTemplateKey
+  +resume: Media
 }
 
 class JobPosting {
-  +jobId: int
+  +id: int
   +title: string
   +status: JobPostingStatus
-  --
-  +isOpen(): boolean
+  +requirements: Requirements
 }
 
-class JobRequirement {
+class Requirements <<value object>> {
   +skillsRequired: string[*]
   +skillsNiceToHave: string[*]
   +minYearsExperience: int
   +notes: string
-  --
-  +toComparisonModel(): json
 }
 
-class ExtractedData {
-  +summary: string
-  +skills: string[*]
-  +languages: string[*]
-  +projects: string[*]
-  +missingFields: string[*]
-  --
-  +normalizeSkills(): void
+class EvaluationConfig <<value object>> {
+  +fitWeight: int
+  +completenessWeight: int
+  +fitSubWeights: json
+  +completenessPoints: json
+  +qualityThresholds: json
+  +customCriteria: CustomCriterion[*]
 }
 
-class EvaluationReport {
-  +fitScore: decimal
-  +completenessScore: decimal
-  +totalScore: decimal
-  +missingSkills: string[*]
-  +missingFields: string[*]
-  +notes: string
-  --
-  +calculateTotal(): decimal
-}
-
-class StandardizedCV {
-  +markdown: text
-  +templateKey: CvTemplateKey
-  +generatedAt: datetime
-  --
-  +renderMarkdown(): text
-}
-
-class CVTemplate {
+class CVTemplate <<catalog>> {
   +key: CvTemplateKey
   +name: string
   +description: string
-  --
-  +render(content: ExtractedData): StandardizedCV
 }
 
-class RecommendationRequest {
-  +resumeMimeType: string
-  +resumeSizeBytes: long
-  --
-  +isValid(): boolean
+class AIProcessor <<service>> {
+  +processCandidate(candidateId: int): void
+  +extractResumeText(resume: Media): string
+  +parseCV(text: string): json
+  +evaluateFit(data: json, req: Requirements): decimal
+  +generateStandardizedCV(data: json, template: CVTemplate): text
 }
 
-class SkillProfile {
-  +skills: string[*]
-  +source: string
-  --
-  +dedupe(): void
-}
+Candidate "*" --> "1" JobPosting : applies to >
+JobPosting "1" *-- "1" Requirements : contains >
+Requirements "0..1" *-- "0..1" EvaluationConfig : configures >
+Candidate "1" --> "0..1" CVTemplate : uses >
 
-class JobRecommendation {
-  +compatibility: decimal
-  +matchedRequired: string[*]
-  +missingRequired: string[*]
-  +matchedNiceToHave: string[*]
-  +missingNiceToHave: string[*]
-  --
-  +computeCompatibility(): decimal
-}
-
-class AIProcessor <<AI>> {
-  +processApplication(appId: int): void
-  +extractResumeText(resume: Resume): string
-  +parseCV(text: string): ExtractedData
-  +evaluateFit(data: ExtractedData, req: JobRequirement): EvaluationReport
-  +generateStandardCV(data: ExtractedData, template: CVTemplate): StandardizedCV
-}
-
-class RecommendationEngine <<AI>> {
-  +extractSkills(req: RecommendationRequest): SkillProfile
-  +rankOpenJobs(skills: SkillProfile, jobs: JobPosting[*]): JobRecommendation[*]
-  +topMatches(ranked: JobRecommendation[*]): JobRecommendation[*]
-}
-
-JobPosting "1" *-- "1" JobRequirement
-CandidateApplication "1" o-- "0..1" ExtractedData
-CandidateApplication "1" o-- "0..1" EvaluationReport
-CandidateApplication "1" o-- "0..1" StandardizedCV
-StandardizedCV "1" --> "1" CVTemplate : basedOn >
-
-AIProcessor ..> CandidateApplication : updates status/score >
-AIProcessor ..> Resume
-AIProcessor ..> JobRequirement
-AIProcessor ..> ExtractedData
-AIProcessor ..> EvaluationReport
-AIProcessor ..> StandardizedCV
-AIProcessor ..> CVTemplate
-
-RecommendationEngine ..> RecommendationRequest
-RecommendationEngine ..> SkillProfile
-RecommendationEngine ..> JobPosting
-RecommendationEngine ..> JobRecommendation
-JobRecommendation "*" --> "1" JobPosting : targets >
-Candidate ..> JobRecommendation : views >
+AIProcessor ..> Candidate : processes >
+AIProcessor ..> Requirements : reads >
+AIProcessor ..> CVTemplate : renders with >
 
 enum ApplicationStatus {
   new

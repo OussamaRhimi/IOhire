@@ -1,81 +1,42 @@
 @startuml
-title Sprint 2 - Class Diagram (Academic Domain Model)
+title Sprint 2 - Class Diagram
 
 skinparam classAttributeIconSize 0
 skinparam shadowing false
 skinparam linetype ortho
 left to right direction
 
-abstract class User {
-  +userId: int
-  +fullName: string
+class HRUser <<Strapi Admin>> {
   +email: string
-  --
-  +authenticate(password: string): boolean
-  +logout(): void
+  +role: string
 }
 
 class Candidate {
-  --
-  +submitApplication(jobId: int, resume: Resume): CandidateApplication
-  +trackApplication(token: string): ApplicationStatus
-  +deleteApplication(token: string): void
-}
-
-class HRUser {
-  +email: string
-  +password: string
-  +role: string
-  --
-  +reviewApplication(appId: int): void
-  +updateApplicationStatus(appId: int, status: ApplicationStatus): void
-  +setApplicationNotes(appId: int, notes: text): void
-}
-
-User <|-- Candidate
-User <|-- HRUser
-
-class JobPosting {
-  +jobId: int
-  +title: string
-  +status: JobPostingStatus
-  --
-  +isOpen(): boolean
-}
-
-class CandidateApplication <<association class>> {
-  +applicationId: int
+  +id: int
+  +fullName: string
+  +email: email
+  +linkedin: string
+  +portfolio: string
+  +resume: Media
+  +status: ApplicationStatus
+  +score: decimal
   +publicToken: string
   +consent: boolean
   +consentAt: datetime
   +retentionUntil: datetime
-  +status: ApplicationStatus
-  +score: decimal
   +hrNotes: text
   +createdAt: datetime
   +updatedAt: datetime
-  --
-  +setStatus(status: ApplicationStatus): void
-  +setHRNotes(notes: text): void
-  +markRetention(until: datetime): void
 }
 
-class Resume {
-  +fileId: int
-  +fileName: string
-  +mimeType: string
-  +sizeBytes: long
-  +url: string
-  --
-  +validateType(): boolean
-  +validateSize(maxBytes: long): boolean
+class JobPosting {
+  +id: int
+  +title: string
+  +status: JobPostingStatus
 }
 
-Candidate "1" -- "0..*" JobPosting : appliesFor >
-(Candidate, JobPosting) .. CandidateApplication
-
-CandidateApplication "1" *-- "1" Resume
-HRUser "1" -- "0..*" CandidateApplication : reviews >
+Candidate "*" --> "1" JobPosting : applies to >
+HRUser "1" --> "0..*" Candidate : reviews >
 
 enum ApplicationStatus {
   new

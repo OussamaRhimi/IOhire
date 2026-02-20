@@ -19,6 +19,14 @@
       "type": "email",
       "required": false
     },
+    "linkedin": {
+      "type": "string",
+      "required": false
+    },
+    "portfolio": {
+      "type": "string",
+      "required": false
+    },
     "resume": {
       "type": "media",
       "multiple": false,

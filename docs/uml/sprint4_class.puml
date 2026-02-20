@@ -1,89 +1,50 @@
 @startuml
-title Sprint 4 - Class Diagram (Academic Domain Model)
+title Sprint 4 - Class Diagram
 
 skinparam classAttributeIconSize 0
 skinparam shadowing false
 skinparam linetype ortho
 left to right direction
 
-class HRUser {
-  +userId: int
-  +fullName: string
+class HRUser <<Strapi Admin>> {
   +email: string
-  +password: string
   +role: string
-  --
-  +filterCandidates(criteria: CandidateFilterCriteria): CandidateApplication[*]
-  +selectFilteredCandidates(criteria: CandidateFilterCriteria): CandidateApplication[*]
-  +applyBulkStatus(cmd: BulkStatusCommand): int
-  +viewAnalytics(): AnalyticsSnapshot
-  +monitorAIPipeline(): void
 }
 
-class JobPosting {
-  +jobId: int
-  +title: string
-  +status: JobPostingStatus
-  --
-  +isOpen(): boolean
-}
-
-class CandidateApplication {
-  +applicationId: int
-  +jobId: int
+class Candidate {
+  +id: int
   +status: ApplicationStatus
   +score: decimal
   +createdAt: datetime
   +updatedAt: datetime
-  --
-  +setStatus(status: ApplicationStatus): void
-  +setScore(score: decimal): void
 }
 
-class CandidateFilterCriteria {
-  +status: ApplicationStatus
-  +scoreOperator: string
-  +scoreThreshold: int
-  +openJobId: int
-  +searchScope: string
-  +searchText: string
-  --
-  +matches(application: CandidateApplication): boolean
+class JobPosting {
+  +id: int
+  +title: string
+  +status: JobPostingStatus
 }
 
-class BulkStatusCommand {
-  +candidateIds: int[*]
-  +targetStatus: ApplicationStatus
-  --
-  +validate(): boolean
-}
-
-class AnalyticsSnapshot {
+class AnalyticsSnapshot <<transient>> {
   +totalJobPostings: int
-  +totalCandidateApplications: int
+  +totalCandidates: int
   +averageScore: decimal
-  +averageProcessingTimeHours: decimal
   +statusDistribution: json
   +scoreHistogram: json
   +submissionsOverTime: json
-  --
-  +buildFromData(apps: CandidateApplication[*], jobs: JobPosting[*]): void
 }
 
-class AIProcessor <<AI>> {
-  +computeMatchScore(applicationId: int): decimal
-  +reprocessCandidate(applicationId: int): void
-  +markStuckAsError(applicationId: int): void
+class BulkStatusCommand <<transient>> {
+  +candidateIds: int[*]
+  +targetStatus: ApplicationStatus
 }
 
-HRUser "1" -- "0..*" CandidateApplication : reviews >
-JobPosting "1" <-- "0..*" CandidateApplication : targets >
+HRUser "1" --> "0..*" Candidate : reviews >
+Candidate "*" --> "1" JobPosting : applies to >
 
-CandidateFilterCriteria ..> CandidateApplication : filters >
-BulkStatusCommand ..> CandidateApplication : updates status >
-AnalyticsSnapshot ..> CandidateApplication : aggregates >
+BulkStatusCommand ..> Candidate : updates status >
+AnalyticsSnapshot ..> Candidate : aggregates >
 AnalyticsSnapshot ..> JobPosting : aggregates >
-AIProcessor ..> CandidateApplication : updates score/status >
 
 enum ApplicationStatus {
   new

@@ -1,108 +1,91 @@
 @startuml
-title IOhire - Use Case Diagram
+title IOhire - Full Use Case Diagram
 left to right direction
 skinparam shadowing false
 skinparam linetype ortho
-skinparam usecaseBackgroundColor #f6f6f6
-skinparam noteBackgroundColor #f9f3c8
-skinparam noteBorderColor #8a8a8a
 
 actor "HR User" as HR
 actor Candidate as C
-actor "AI Service (Ollama)" as AI
+actor "AI Service\n(Ollama)" as AI
 
 rectangle "IOhire System" {
-  usecase "Secure Storage & GDPR Controls" as U_GDPR
 
-  usecase "Manage & Review Candidates" as U_ManageCandidates
-  usecase "Update Candidate Status" as U_UpdateStatus
-  usecase "Add HR Note" as U_AddNote
-  usecase "Download Candidate Resume" as U_DownloadResume
+  ' --- HR use cases ---
+  usecase "Authenticate" as UC_Auth
+  usecase "Manage Job Postings" as UC_ManageJobs
+  usecase "Configure AI Evaluation" as UC_AIConfig
+  usecase "Manage Skills" as UC_Skills
+  usecase "Manage Departments" as UC_Depts
+  usecase "Review Candidates" as UC_Review
+  usecase "Update Candidate Status" as UC_Status
+  usecase "Bulk Update Status" as UC_Bulk
+  usecase "Add HR Notes" as UC_Notes
+  usecase "Download Resume" as UC_DlResume
+  usecase "Select CV Template" as UC_Template
+  usecase "Download Standardized CV (HR)" as UC_DlCvHR
+  usecase "Reprocess Candidate" as UC_Reprocess
+  usecase "View Analytics Dashboard" as UC_Analytics
 
-  usecase "Create / Manage Job Postings" as U_ManageJobs
-  usecase "Define Job Posting & Requirements" as U_DefineReq
-  usecase "View / Search / Filter Applications" as U_FilterApps
+  ' --- Public / Candidate use cases ---
+  usecase "Browse Open Job Postings" as UC_Browse
+  usecase "Submit Application" as UC_Submit
+  usecase "Track Application" as UC_Track
+  usecase "Delete Application (GDPR)" as UC_Delete
+  usecase "Download Standardized CV (Public)" as UC_DlCvPub
+  usecase "Request Job Recommendations" as UC_Recommend
+  usecase "Chat with AI Assistant" as UC_Chat
 
-  usecase "Manage Skills Taxonomy" as U_ManageSkills
-  usecase "Add Skill" as U_AddSkill
-  usecase "Update Skill" as U_UpdateSkill
-  usecase "Delete Skill" as U_DeleteSkill
-
-  usecase "View Analytics Dashboard" as U_Dashboard
-  usecase "Review KPI Charts" as U_KPI
-
-  usecase "Generate Standardized CV" as U_GenerateCV
-  usecase "Reprocess Candidate Application" as U_Reprocess
-
-  usecase "Submit CV / Application" as U_Submit
-  usecase "Track Application Status" as U_Track
-  usecase "Download Standardized CV (Public)" as U_PublicCV
-  usecase "Request Job Recommendations" as U_Recommend
-  usecase "Integrate with LinkedIn / External Platforms" as U_External
+  ' --- AI-internal use cases ---
+  usecase "Process Candidate (AI Pipeline)" as UC_Process
 }
 
-' Actor associations (left users, right AI)
-HR -right-> U_GDPR
-HR -right-> U_ManageCandidates
-HR -right-> U_ManageJobs
-HR -right-> U_FilterApps
-HR -right-> U_ManageSkills
-HR -right-> U_Dashboard
-HR -right-> U_GenerateCV
+' --- Actor associations ---
+HR --> UC_Auth
+HR --> UC_ManageJobs
+HR --> UC_AIConfig
+HR --> UC_Skills
+HR --> UC_Depts
+HR --> UC_Review
+HR --> UC_Bulk
+HR --> UC_Template
+HR --> UC_DlCvHR
+HR --> UC_Reprocess
+HR --> UC_Analytics
 
-C -right-> U_Submit
-C -right-> U_Track
-C -right-> U_Recommend
+C --> UC_Browse
+C --> UC_Submit
+C --> UC_Track
+C --> UC_Delete
+C --> UC_DlCvPub
+C --> UC_Recommend
+C --> UC_Chat
 
-AI -left-> U_GenerateCV
-AI -left-> U_Recommend
-AI -left-> U_Reprocess
+AI --> UC_Process
+AI --> UC_Recommend
+AI --> UC_Chat
 
-' Generalization (structured)
-U_UpdateStatus -|> U_ManageCandidates
-U_AddNote -|> U_ManageCandidates
-U_DownloadResume -|> U_ManageCandidates
+' --- Include / Extend ---
+UC_Review ..> UC_Status : <<include>>
+UC_Review ..> UC_Notes : <<include>>
+UC_Review ..> UC_DlResume : <<include>>
 
-U_AddSkill -|> U_ManageSkills
-U_UpdateSkill -|> U_ManageSkills
-U_DeleteSkill -|> U_ManageSkills
+UC_Submit ..> UC_Process : <<triggers>>
+UC_Reprocess ..> UC_Process : <<triggers>>
 
-' Include relations
-U_ManageJobs ..> U_DefineReq : <<include>>
-U_ManageCandidates ..> U_FilterApps : <<include>>
-U_Dashboard ..> U_KPI : <<include>>
+UC_DlCvPub ..> UC_Track : <<extend>>
+UC_ManageJobs ..> UC_AIConfig : <<extend>>
 
-' Extend relations
-U_PublicCV ..> U_Track : <<extend>>
-U_Reprocess ..> U_ManageCandidates : <<extend>>
-U_Recommend ..> U_External : <<extend>>
+' --- Layout helpers ---
+UC_Auth -[hidden]down-> UC_ManageJobs
+UC_ManageJobs -[hidden]down-> UC_Skills
+UC_Skills -[hidden]down-> UC_Depts
+UC_Depts -[hidden]down-> UC_Review
+UC_Review -[hidden]down-> UC_Analytics
 
-' Layout helpers (clean vertical structure)
-U_GDPR -[hidden]down-> U_ManageCandidates
-U_ManageCandidates -[hidden]down-> U_ManageJobs
-U_ManageJobs -[hidden]down-> U_FilterApps
-U_FilterApps -[hidden]down-> U_ManageSkills
-U_ManageSkills -[hidden]down-> U_Dashboard
-U_Dashboard -[hidden]down-> U_GenerateCV
-
-U_Submit -[hidden]down-> U_Track
-U_Track -[hidden]down-> U_PublicCV
-U_PublicCV -[hidden]down-> U_Recommend
-
-note top of U_GDPR
-  Includes consent management,
-  data deletion requests,
-  access logs, and secure file handling.
-end note
-
-note bottom of U_GenerateCV
-  Relies on AI model inference
-  for scoring, recommendations,
-  and standardized CV generation.
-end note
-
-note right of AI
-  Secondary actor
-end note
+UC_Browse -[hidden]down-> UC_Submit
+UC_Submit -[hidden]down-> UC_Track
+UC_Track -[hidden]down-> UC_Delete
+UC_Delete -[hidden]down-> UC_Recommend
+UC_Recommend -[hidden]down-> UC_Chat
 
 @enduml
