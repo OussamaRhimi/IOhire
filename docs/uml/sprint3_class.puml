@@ -30,15 +30,6 @@ class Requirements <<value object>> {
   +notes: string
 }
 
-class EvaluationConfig <<value object>> {
-  +fitWeight: int
-  +completenessWeight: int
-  +fitSubWeights: json
-  +completenessPoints: json
-  +qualityThresholds: json
-  +customCriteria: CustomCriterion[*]
-}
-
 class CVTemplate <<catalog>> {
   +key: CvTemplateKey
   +name: string
@@ -55,7 +46,6 @@ class AIProcessor <<service>> {
 
 Candidate "*" --> "1" JobPosting : applies to >
 JobPosting "1" *-- "1" Requirements : contains >
-Requirements "0..1" *-- "0..1" EvaluationConfig : configures >
 Candidate "1" --> "0..1" CVTemplate : uses >
 
 AIProcessor ..> Candidate : processes >
@@ -88,6 +78,12 @@ enum CvTemplateKey {
   project_focus
   sidebar_photo
   accent_pink
+  teal_circle
+  navy_gold
+  sunset
+}
+
+@enduml
   teal_circle
   navy_gold
   sunset

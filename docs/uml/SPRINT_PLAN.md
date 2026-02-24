@@ -1,13 +1,13 @@
 # IOhire Sprint Plan
 
-Baseline: **4 sprints** across ~16 weeks.
+Baseline: **4 sprints** across ~15 weeks (Feb 20 – Jun 2, 102 calendar days).
 
 | Sprint | Duration | Main Scope |
 |---|---:|---|
-| Sprint 1 | 4 weeks | HR authentication (Strapi Admin) + taxonomy (Skills/Departments CRUD) + Job Posting management with embedded requirements |
-| Sprint 2 | 4 weeks | Candidate application lifecycle: public submit/track/delete, resume upload + consent, HR review/status/notes |
-| Sprint 3 | 4.5 weeks | AI pipeline (parsing, scoring, standardized CV), CV templates/PDF, evaluation config, job recommendations, chatbot |
-| Sprint 4 | 3 weeks | Decision support (multi-criteria filtering, bulk status), analytics dashboard, admin shell, default template config |
+| Sprint 1 | 3.5 weeks (25 days) | HR authentication (Strapi Admin) + taxonomy (Skills/Departments CRUD) + Job Posting management + cascade deletion + admin shell layout |
+| Sprint 2 | 4 weeks (27 days) | Candidate application lifecycle: public submit/track/delete, resume upload + consent, HR review/status/notes |
+| Sprint 3 | 3.5 weeks (26 days) | AI pipeline (parsing, scoring, standardized CV), CV templates/PDF, reprocess |
+| Sprint 4 | 3.5 weeks (24 days) | Decision support (filtering, bulk status), analytics dashboard, AI evaluation config, job recommendations, chatbot, default template |
 
 ## Entity Model
 
@@ -27,15 +27,16 @@ The system has 4 content types:
 
 ## Rationale for this order
 
+- Admin shell provides the HR portal layout foundation from the start.
 - Skills and Departments are prerequisites for structured requirements modeling.
 - Job posting quality must be established before opening candidate intake.
-- AI scoring and recommendation should run on stable candidate + job posting data.
-- Bulk decisions and analytics are most valuable after the AI pipeline is mature.
+- AI scoring and CV generation should run on stable candidate + job posting data.
+- Advanced AI features (evaluation config, recommendations, chatbot) and decision support are most valuable after the core AI pipeline is mature.
 
 ## If your school asks for only 3 sprints
 
 Merge Sprint 3 and Sprint 4:
 
-- Sprint 1: Foundation + Auth + Taxonomy + Jobs
+- Sprint 1: Foundation + Auth + Taxonomy + Jobs + Admin Shell
 - Sprint 2: Candidate flow + HR review
-- Sprint 3: AI pipeline + Recommendations + Chatbot + Decision support + Analytics
+- Sprint 3: AI pipeline + Templates + Decision support + Analytics + Recommendations + Chatbot

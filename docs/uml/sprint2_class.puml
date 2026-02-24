@@ -6,6 +6,10 @@ skinparam shadowing false
 skinparam linetype ortho
 left to right direction
 
+class Visitor <<anonymous>> {
+  +sessionId: string
+}
+
 class HRUser <<Strapi Admin>> {
   +email: string
   +role: string
@@ -35,6 +39,8 @@ class JobPosting {
   +status: JobPostingStatus
 }
 
+Visitor ..> JobPosting : browses (open) >
+Visitor ..> Candidate : submits / tracks / deletes >
 Candidate "*" --> "1" JobPosting : applies to >
 HRUser "1" --> "0..*" Candidate : reviews >
 

@@ -4,7 +4,7 @@ left to right direction
 skinparam packageStyle rectangle
 skinparam shadowing false
 
-actor Candidate as A_Candidate
+actor Visitor as A_Visitor
 actor "HR User" as A_HR
 
 rectangle "IOhire - Sprint 2" {
@@ -26,10 +26,10 @@ rectangle "IOhire - Sprint 2" {
   }
 }
 
-A_Candidate --> UC1
-A_Candidate --> UC2
-A_Candidate --> UC5
-A_Candidate --> UC6
+A_Visitor --> UC1
+A_Visitor --> UC2
+A_Visitor --> UC5
+A_Visitor --> UC6
 
 UC2 ..> UC3 : <<include>>
 UC2 ..> UC4 : <<include>>

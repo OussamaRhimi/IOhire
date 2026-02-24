@@ -7,32 +7,45 @@ skinparam shadowing false
 actor "HR User" as HR
 
 rectangle "IOhire - Sprint 1" {
-  usecase "UC1 - Authenticate (Strapi Admin)" as UC1
-  usecase "UC2 - Manage Skills (CRUD)" as UC2
-  usecase "UC3 - Manage Departments (CRUD)" as UC3
-  usecase "UC4 - Create Job Posting" as UC4
-  usecase "UC5 - Update Job Posting" as UC5
-  usecase "UC6 - Change Job Posting Status" as UC6
-  usecase "UC7 - Delete Job Posting" as UC7
-  usecase "UC8 - Search Skills in Requirements" as UC8
-  usecase "UC9 - Search Departments in Requirements" as UC9
+  package "Authentication" {
+    usecase "UC1 - Authenticate (Strapi Admin)" as UC1
+  }
+
+  package "Taxonomy Management" {
+    usecase "UC2 - Manage Skills (CRUD)" as UC2
+    usecase "UC3 - Manage Departments (CRUD)" as UC3
+    usecase "UC4 - Search Skills in Requirements" as UC4
+    usecase "UC5 - Search Departments in Requirements" as UC5
+  }
+
+  package "Job Posting Management" {
+    usecase "UC6 - Create Job Posting" as UC6
+    usecase "UC7 - Update Job Posting" as UC7
+    usecase "UC8 - Change Job Posting Status" as UC8
+    usecase "UC9 - Delete Job Posting (cascade)" as UC9
+  }
+
+  package "Portal Layout" {
+    usecase "UC10 - Admin Shell + Sidebar" as UC10
+  }
 }
 
 HR --> UC1
 HR --> UC2
 HR --> UC3
-HR --> UC4
-HR --> UC5
 HR --> UC6
 HR --> UC7
+HR --> UC8
+HR --> UC9
+HR --> UC10
 
-UC4 ..> UC1 : <<include>>
-UC4 ..> UC8 : <<include>>
-UC4 ..> UC9 : <<include>>
-UC5 ..> UC1 : <<include>>
-UC5 ..> UC8 : <<include>>
-UC5 ..> UC9 : <<include>>
 UC6 ..> UC1 : <<include>>
+UC6 ..> UC4 : <<include>>
+UC6 ..> UC5 : <<include>>
 UC7 ..> UC1 : <<include>>
+UC7 ..> UC4 : <<include>>
+UC7 ..> UC5 : <<include>>
+UC8 ..> UC1 : <<include>>
+UC9 ..> UC1 : <<include>>
 
 @enduml

@@ -6,6 +6,10 @@ skinparam shadowing false
 skinparam linetype ortho
 left to right direction
 
+class Visitor <<anonymous>> {
+  +sessionId: string
+}
+
 class HRUser <<Strapi Admin>> {
   +email: string
   +role: string
@@ -23,6 +27,21 @@ class JobPosting {
   +id: int
   +title: string
   +status: JobPostingStatus
+  +requirements: Requirements
+}
+
+class Requirements <<value object>> {
+  +skillsRequired: string[*]
+  +skillsNiceToHave: string[*]
+}
+
+class EvaluationConfig <<value object>> {
+  +fitWeight: int
+  +completenessWeight: int
+  +fitSubWeights: json
+  +completenessPoints: json
+  +qualityThresholds: json
+  +customCriteria: CustomCriterion[*]
 }
 
 class AnalyticsSnapshot <<transient>> {
@@ -39,12 +58,46 @@ class BulkStatusCommand <<transient>> {
   +targetStatus: ApplicationStatus
 }
 
+class JobRecommendation <<transient>> {
+  +jobId: int
+  +title: string
+  +compatibility: decimal
+  +matchedRequired: string[*]
+  +missingRequired: string[*]
+  +matchedNiceToHave: string[*]
+  +missingNiceToHave: string[*]
+}
+
+class ChatSession <<transient>> {
+  +messages: ChatMessage[*]
+  +maxHistory: int = 20
+}
+
+class ChatMessage <<transient>> {
+  +role: ChatRole
+  +content: string
+}
+
+class AIProcessor <<service>> {
+  +recommendJobPostings(resume: Media): JobRecommendation[*]
+}
+
 HRUser "1" --> "0..*" Candidate : reviews >
+HRUser ..> AnalyticsSnapshot : views >
 Candidate "*" --> "1" JobPosting : applies to >
+JobPosting "1" *-- "1" Requirements : contains >
+Requirements "0..1" *-- "0..1" EvaluationConfig : configures >
+
+Visitor ..> JobRecommendation : requests >
+Visitor ..> ChatSession : chats >
 
 BulkStatusCommand ..> Candidate : updates status >
 AnalyticsSnapshot ..> Candidate : aggregates >
 AnalyticsSnapshot ..> JobPosting : aggregates >
+ChatSession "1" *-- "1..*" ChatMessage : contains >
+AIProcessor ..> JobRecommendation : produces >
+AIProcessor ..> ChatSession : responds to >
+JobRecommendation "*" --> "1" JobPosting : targets >
 
 enum ApplicationStatus {
   new
@@ -61,6 +114,18 @@ enum JobPostingStatus {
   draft
   open
   closed
+}
+
+enum QualityLabel {
+  excellent
+  good
+  fair
+  poor
+}
+
+enum ChatRole {
+  user
+  assistant
 }
 
 @enduml

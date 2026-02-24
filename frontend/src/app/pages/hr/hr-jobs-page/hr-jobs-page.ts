@@ -140,6 +140,43 @@ export class HrJobsPage {
   readonly modalTitle = computed(() => (this.editingJob() ? 'Edit Job Posting' : 'Create New Job Posting'));
   readonly submitLabel = computed(() => (this.editingJob() ? 'Save Changes' : 'Create Posting'));
 
+  /* ─── Pagination ─── */
+  readonly currentPage = signal(1);
+  readonly pageSize = signal(6);
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.jobs().length / this.pageSize())));
+  readonly paginatedJobs = computed(() => {
+    const page = Math.min(this.currentPage(), this.totalPages());
+    const size = this.pageSize();
+    const start = (page - 1) * size;
+    return this.jobs().slice(start, start + size);
+  });
+  readonly pageNumbers = computed(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: (number | '...')[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 3) pages.push('...');
+      for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
+      if (current < total - 2) pages.push('...');
+      pages.push(total);
+    }
+    return pages;
+  });
+
+  goToPage(page: number) {
+    const p = Math.max(1, Math.min(page, this.totalPages()));
+    this.currentPage.set(p);
+  }
+
+  setPageSize(size: number) {
+    this.pageSize.set(size);
+    this.currentPage.set(1);
+  }
+  /* ─── End Pagination ─── */
+
   readonly iconPlus: LucideIconData = Plus;
   readonly iconEdit: LucideIconData = Edit2;
   readonly iconTrash: LucideIconData = Trash2;

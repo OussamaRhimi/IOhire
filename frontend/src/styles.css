@@ -623,6 +623,50 @@ textarea.input {
   align-items: start;
 }
 
+/* ── Hamburger trigger (mobile only) ── */
+.admin-sidebar-hamburger {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 99;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border: 2px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.admin-sidebar-hamburger:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Backdrop (mobile overlay) ── */
+.admin-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  animation: sidebarFadeIn 200ms ease;
+}
+
+@keyframes sidebarFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sidebarSlideIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
 .admin-sidebar {
   position: sticky;
   top: 86px;
@@ -636,6 +680,32 @@ textarea.input {
   background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 90%, var(--accent) 10%), var(--panel));
   box-shadow: var(--shadow);
   transition: width 180ms ease, padding 180ms ease;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Mobile: fixed overlay panel, hidden by default */
+.admin-sidebar.admin-sidebar--mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 200;
+  height: 100vh;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  width: 280px;
+  transform: translateX(-100%);
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease;
+}
+
+.admin-sidebar.admin-sidebar--mobile.admin-sidebar--mobile-open {
+  transform: translateX(0);
+  pointer-events: all;
+  opacity: 1;
+  animation: sidebarSlideIn 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .admin-sidebar.admin-sidebar--collapsed {
@@ -773,7 +843,8 @@ textarea.input {
     grid-template-columns: 1fr;
   }
 
-  .admin-sidebar {
+  /* On mobile the sidebar is a fixed overlay, not in the grid flow */
+  .admin-sidebar:not(.admin-sidebar--mobile) {
     position: relative;
     top: 0;
     height: auto;
@@ -1752,4 +1823,64 @@ textarea.input {
   font-size: 0.85rem;
   line-height: 1.6;
   color: var(--muted);
+}
+
+/* ═══════════════════════════════════════════════════
+   Pagination Component
+   ═══════════════════════════════════════════════════ */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.pagination__info {
+  white-space: nowrap;
+}
+
+.pagination__controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pagination__controls .btn {
+  min-width: 36px;
+  justify-content: center;
+}
+
+.pagination__ellipsis {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 14px;
+  user-select: none;
+}
+
+.pagination__size select {
+  min-width: 100px;
+}
+
+@media (max-width: 600px) {
+  .pagination {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .pagination__controls {
+    justify-content: center;
+  }
+
+  .pagination__info,
+  .pagination__size {
+    text-align: center;
+  }
 }

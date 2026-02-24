@@ -183,7 +183,7 @@
           <div>Match score</div>
           <div>Actions</div>
         </div>
-        @for (c of filtered(); track (c.documentId || c.id)) {
+        @for (c of paginatedFiltered(); track (c.documentId || c.id)) {
           <div class="table__row">
             <div class="candidate-select-cell">
               <input
@@ -233,6 +233,41 @@
           </div>
         }
       </div>
+
+      <!-- Pagination -->
+      @if (totalPages() > 1) {
+        <nav class="pagination">
+          <div class="pagination__info muted small">
+            Showing {{ (currentPage() - 1) * pageSize() + 1 }}–{{ currentPage() * pageSize() > filtered().length ? filtered().length : currentPage() * pageSize() }}
+            of {{ filtered().length }}
+          </div>
+          <div class="pagination__controls">
+            <button class="btn btn--ghost btn--sm" type="button" [disabled]="currentPage() <= 1" (click)="goToPage(currentPage() - 1)">&laquo; Prev</button>
+            @for (p of pageNumbers(); track $index) {
+              @if (p === '...') {
+                <span class="pagination__ellipsis">…</span>
+              } @else {
+                <button
+                  class="btn btn--sm"
+                  [class.btn--primary]="p === currentPage()"
+                  [class.btn--ghost]="p !== currentPage()"
+                  type="button"
+                  (click)="goToPage(+p)"
+                >{{ p }}</button>
+              }
+            }
+            <button class="btn btn--ghost btn--sm" type="button" [disabled]="currentPage() >= totalPages()" (click)="goToPage(currentPage() + 1)">Next &raquo;</button>
+          </div>
+          <div class="pagination__size">
+            <select class="input input--sm" [value]="pageSize()" (change)="setPageSize(+$any($event.target).value)">
+              <option value="5">5 / page</option>
+              <option value="10">10 / page</option>
+              <option value="25">25 / page</option>
+              <option value="50">50 / page</option>
+            </select>
+          </div>
+        </nav>
+      }
     }
   </div>
 </section>

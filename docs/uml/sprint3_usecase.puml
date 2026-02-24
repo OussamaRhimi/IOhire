@@ -4,7 +4,7 @@ left to right direction
 skinparam packageStyle rectangle
 skinparam shadowing false
 
-actor Candidate as A_Candidate
+actor Visitor as A_Visitor
 actor "HR User" as A_HR
 actor "AI Service\n(Ollama)" as A_AI
 
@@ -23,25 +23,13 @@ rectangle "IOhire - Sprint 3" {
     usecase "UC8 - Download Standardized CV (HR)" as UC8
     usecase "UC9 - Download Standardized CV (Public)" as UC9
   }
-
-  package "AI Evaluation Config" {
-    usecase "UC10 - Configure Evaluation per Job" as UC10
-  }
-
-  package "Public Features" {
-    usecase "UC11 - Request Job Recommendations" as UC11
-    usecase "UC12 - Chat with AI Assistant" as UC12
-  }
 }
 
 A_HR --> UC6
 A_HR --> UC7
 A_HR --> UC8
-A_HR --> UC10
 
-A_Candidate --> UC9
-A_Candidate --> UC11
-A_Candidate --> UC12
+A_Visitor --> UC9
 
 UC1 ..> UC2 : <<include>>
 UC1 ..> UC3 : <<include>>
@@ -52,7 +40,5 @@ UC6 ..> UC1 : <<triggers>>
 
 A_AI --> UC3
 A_AI --> UC5
-A_AI --> UC11
-A_AI --> UC12
 
 @enduml

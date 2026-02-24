@@ -133,6 +133,44 @@ export class HrCandidatesPage {
       return qTokens.every((token) => hay.includes(token));
     });
   });
+
+  /* ─── Pagination ─── */
+  readonly currentPage = signal(1);
+  readonly pageSize = signal(10);
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
+  readonly paginatedFiltered = computed(() => {
+    const page = Math.min(this.currentPage(), this.totalPages());
+    const size = this.pageSize();
+    const start = (page - 1) * size;
+    return this.filtered().slice(start, start + size);
+  });
+  readonly pageNumbers = computed(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: (number | '...')[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 3) pages.push('...');
+      for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
+      if (current < total - 2) pages.push('...');
+      pages.push(total);
+    }
+    return pages;
+  });
+
+  goToPage(page: number) {
+    const p = Math.max(1, Math.min(page, this.totalPages()));
+    this.currentPage.set(p);
+  }
+
+  setPageSize(size: number) {
+    this.pageSize.set(size);
+    this.currentPage.set(1);
+  }
+  /* ─── End Pagination ─── */
+
   readonly selectedCount = computed(() => this.selectedCandidateIds().length);
   readonly allFilteredSelected = computed(() => {
     const filtered = this.filtered();
@@ -370,6 +408,7 @@ export class HrCandidatesPage {
       scoreThreshold: 70,
       jobId: '',
     });
+    this.currentPage.set(1);
   }
 
   async reprocess(c: HrCandidate) {
